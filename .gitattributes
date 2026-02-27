@@ -1,0 +1,2 @@
+git lfs track "*.unity" --lockable
+git lfs track "*.prefab" --lockable
