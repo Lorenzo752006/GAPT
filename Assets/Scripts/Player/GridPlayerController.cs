@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // Add this namespace
+using UnityEngine.InputSystem;
 
 public class GridPlayerController : MonoBehaviour
 {
@@ -16,9 +16,11 @@ public class GridPlayerController : MonoBehaviour
     [SerializeField] private int startX = 1;
     [SerializeField] private int startY = 1;
 
+    // NEW: last successful movement direction
+    public Vector2Int FacingDirection { get; private set; } = Vector2Int.right;
+
     private void Start()
     {
-        // Place the player at a valid starting grid position
         gridPosition = new Vector2Int(startX, startY);
         targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
         transform.position = targetWorldPosition;
@@ -64,13 +66,15 @@ public class GridPlayerController : MonoBehaviour
     {
         Vector2Int targetGrid = gridPosition + direction;
 
-        // Ask the GridManager if the target cell is walkable
         if (GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
         {
             gridPosition = targetGrid;
             targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
             isMoving = true;
             cooldownTimer = moveCooldown;
+
+            // NEW: update facing only on a successful move
+            FacingDirection = direction;
         }
     }
 
@@ -92,9 +96,6 @@ public class GridPlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Returns the player's current logical grid position.
-    /// </summary>
     public Vector2Int GetGridPosition()
     {
         return gridPosition;
