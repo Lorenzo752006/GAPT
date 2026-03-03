@@ -758,7 +758,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSlashAttack
   playerController: {fileID: 0}
-  damage: 25
+  damage: 40
   cooldown: 0.25
   slashPrefab: {fileID: 5100416}
   slashLifetime: 0.15
