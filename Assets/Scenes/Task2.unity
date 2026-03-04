@@ -484,10 +484,10 @@ GameObject:
   m_Component:
   - component: {fileID: 2125404024}
   - component: {fileID: 2125404023}
-  - component: {fileID: 2125404022}
-  - component: {fileID: 2125404021}
   - component: {fileID: 2125404020}
   - component: {fileID: 2125404019}
+  - component: {fileID: 2125404026}
+  - component: {fileID: 2125404025}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Untagged
@@ -572,48 +572,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &2125404021
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2125404018}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f72a91d9019bd6338864bcd4b99f5d6a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
-  player: {fileID: 1051132958}
-  speed: 5
---- !u!114 &2125404022
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2125404018}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eedb9031d13c45ce28698ce7574ccc48, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy_Rigid
-  target: {fileID: 1051132958}
-  acceleration: 3
-  maxSpeed: 5
-  stopDistance: 2
-  brakeStrength: 5
-  rotationSpeed: 100
-  gripStrength: 15
-  arrivalSharpness: 1.5
-  flee: 0
-  rayCount: 24
-  detectionRange: 2.5
-  wallDangerWeight: 1.15
-  agentRadius: 0.23
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 64
 --- !u!212 &2125404023
 SpriteRenderer:
   serializedVersion: 2
@@ -688,6 +646,48 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2125404025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2125404018}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76aa576fe336e24419a70083176cdc3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
+  player: {fileID: 1051132958}
+  speed: 5
+--- !u!114 &2125404026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2125404018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4eba9215dc521144aa54cc8b9b47fec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyLocomotion
+  target: {fileID: 1051132958}
+  acceleration: 3
+  maxSpeed: 5
+  stopDistance: 2
+  brakeStrength: 5
+  rotationSpeed: 100
+  gripStrength: 15
+  arrivalSharpness: 1.5
+  flee: 0
+  rayCount: 24
+  detectionRange: 2.5
+  wallDangerWeight: 1.15
+  agentRadius: 0.23
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
