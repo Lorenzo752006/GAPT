@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Utility script to ignore collision between one enemy collider and the player collider.
 public class IgnorePlayerCollision : MonoBehaviour
 {
     [SerializeField] private Collider2D enemyCollider;

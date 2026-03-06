@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
+// Grid-based forward slash attack.
+// Damages enemies in a small pattern in front of the player.
 public class PlayerSlashAttack : MonoBehaviour
 {
     [Header("Refs")]
@@ -47,6 +49,7 @@ public class PlayerSlashAttack : MonoBehaviour
         Vector2Int f = playerController.FacingDirection;
         if (f == Vector2Int.zero) f = Vector2Int.right;
 
+        // Perpendicular offsets for side cells in the slash pattern.
         Vector2Int left = new Vector2Int(-f.y, f.x);
         Vector2Int right = new Vector2Int(f.y, -f.x);
 
@@ -77,6 +80,7 @@ public class PlayerSlashAttack : MonoBehaviour
         Vector2Int slashCell = originCell + facing;
         Vector3 worldPos = GridManager.Instance.GridToWorld(slashCell.x, slashCell.y);
 
+        // Push the visual slightly forward so it reads clearly in front of the player.
         worldPos += new Vector3(facing.x, facing.y, 0f) * halfTileOffset;
 
         Quaternion rot = RotationFromFacing(facing);
@@ -96,6 +100,7 @@ public class PlayerSlashAttack : MonoBehaviour
 
     private void DamageEnemiesInCell(Vector2Int cell)
     {
+        // Snapshot avoids modifying the collection while an enemy dies / is destroyed.
         List<EnemyHealth> snapshot = new List<EnemyHealth>(EnemyHealth.Active);
 
         for (int i = 0; i < snapshot.Count; i++)

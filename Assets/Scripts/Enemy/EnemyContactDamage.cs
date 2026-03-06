@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Deals contact damage to the player while the enemy stays in contact / overlap.
 public class EnemyContactDamage : MonoBehaviour
 {
     public float damagePerSecond = 20f;

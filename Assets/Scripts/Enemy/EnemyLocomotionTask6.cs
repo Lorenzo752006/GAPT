@@ -1,11 +1,14 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
+// Context-steering locomotion used in Task 6.
+// It samples multiple directions around the enemy, scores them based on
+// interest (toward the target) and danger (walls), then steers physically.
 public class EnemyLocomotionTask6 : MonoBehaviour
 {
     private Rigidbody2D rb;
     private Vector2[] rayDirections;
-    private float[] lastFrameInterests;
+    private float[] lastFrameScores;
 
     [SerializeField] private Transform target;
 
@@ -14,6 +17,7 @@ public class EnemyLocomotionTask6 : MonoBehaviour
     [SerializeField] private float maxSpeed = 5f;
     [SerializeField] private float stopDistance = 2f;
     [SerializeField] private float brakeStrength = 5f;
+    [SerializeField] private float maxSteeringForce = 4f;
 
     [Header("Physics Feel")]
     [SerializeField] private float rotationSpeed = 10f;
@@ -24,10 +28,11 @@ public class EnemyLocomotionTask6 : MonoBehaviour
     [SerializeField] private bool flee = false;
 
     [Header("Context Steering")]
-    [SerializeField] private int rayCount = 12;
+    [SerializeField] private int rayCount = 24;
     [SerializeField] private float detectionRange = 4.5f;
     [SerializeField] private float wallDangerWeight = 2.0f;
     [SerializeField] private float agentRadius = 0.4f;
+    [SerializeField] private float scoreSmoothing = 0.5f;
     [SerializeField] private LayerMask wallLayer;
 
     private float baseMaxSpeed;
@@ -35,12 +40,7 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
     void Awake()
     {
-        rayDirections = new Vector2[rayCount];
-        for (int i = 0; i < rayCount; i++)
-        {
-            float angle = i * (Mathf.PI * 2) / rayCount;
-            rayDirections[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-        }
+        BuildRayDirections();
     }
 
     void Start()
@@ -55,14 +55,28 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (target == null) return;
+        if (target == null)
+        {
+            // If no target is assigned, gradually brake to a stop.
+            if (rb.linearVelocity.magnitude > 0.01f)
+            {
+                rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, Vector2.zero, Time.fixedDeltaTime * brakeStrength);
+            }
+            else
+            {
+                rb.linearVelocity = Vector2.zero;
+            }
+            return;
+        }
 
         Vector2 desiredVelocity = GetContextVelocity(target.position);
 
+        // Steering = desired velocity minus current velocity.
         Vector2 steering = desiredVelocity - rb.linearVelocity;
-        steering = Vector2.ClampMagnitude(steering, 1.5f);
+        steering = Vector2.ClampMagnitude(steering, maxSteeringForce);
         rb.AddForce(steering * acceleration, ForceMode2D.Force);
 
+        // Remove sideways drift so movement feels tighter.
         Vector2 right = transform.right;
         float drift = Vector2.Dot(rb.linearVelocity, right);
         rb.AddForce(-right * drift * gripStrength, ForceMode2D.Force);
@@ -79,77 +93,118 @@ public class EnemyLocomotionTask6 : MonoBehaviour
         if (rb.linearVelocity.magnitude > 0.1f)
         {
             float angle = Mathf.Atan2(rb.linearVelocity.y, rb.linearVelocity.x) * Mathf.Rad2Deg - 90f;
-            Quaternion moveRotation = Quaternion.Euler(0, 0, angle);
-            transform.rotation = Quaternion.Slerp(transform.rotation, moveRotation, rotationSpeed * Time.fixedDeltaTime);
+            Quaternion moveRotation = Quaternion.Euler(0f, 0f, angle);
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                moveRotation,
+                rotationSpeed * Time.fixedDeltaTime
+            );
         }
     }
 
-    Vector2 GetContextVelocity(Vector2 targetPos)
+    private void BuildRayDirections()
     {
-        float[] interestMap = new float[rayCount];
+        if (rayCount < 3) rayCount = 3;
+
+        rayDirections = new Vector2[rayCount];
+        lastFrameScores = new float[rayCount];
+
+        for (int i = 0; i < rayCount; i++)
+        {
+            float angle = i * (Mathf.PI * 2f) / rayCount;
+            rayDirections[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            lastFrameScores[i] = 0f;
+        }
+    }
+
+    private Vector2 GetContextVelocity(Vector2 targetPos)
+    {
+        if (rayDirections == null || rayDirections.Length != rayCount)
+            BuildRayDirections();
+
         float[] dangerMap = new float[rayCount];
 
-        float lookAheadOffset = rb.linearVelocity.magnitude * Time.fixedDeltaTime;
-        Vector2 castOrigin = (Vector2)transform.position + (rb.linearVelocity.sqrMagnitude > 0.0001f
-            ? (rb.linearVelocity.normalized * lookAheadOffset)
-            : Vector2.zero);
+        Vector2 toTarget = targetPos - (Vector2)transform.position;
+        float distance = toTarget.magnitude;
 
-        Vector2 targetDir = (targetPos - (Vector2)transform.position).normalized;
+        if (distance < 0.0001f)
+            return Vector2.zero;
+
+        Vector2 targetDir = toTarget.normalized;
         if (flee) targetDir *= -1f;
+
+        Vector2 velocityDir = rb.linearVelocity.sqrMagnitude > 0.0001f
+            ? rb.linearVelocity.normalized
+            : Vector2.zero;
+
+        Vector2 finalHeading = Vector2.zero;
+        float totalWeight = 0f;
+        float bestDanger = 0f;
 
         for (int i = 0; i < rayCount; i++)
         {
             Vector2 dir = rayDirections[i];
 
-            interestMap[i] = Mathf.Max(0, Vector2.Dot(dir, targetDir));
+            float interest = Mathf.Max(0f, Vector2.Dot(dir, targetDir));
 
-            Vector2 rayStart = castOrigin + (dir * 0.1f);
-            RaycastHit2D hit = Physics2D.CircleCast(rayStart, agentRadius, dir, detectionRange, wallLayer);
+            // CircleCast checks whether moving in this direction would hit a wall.
+            Vector2 castOrigin = (Vector2)transform.position + dir * 0.1f;
+            RaycastHit2D hit = Physics2D.CircleCast(castOrigin, agentRadius, dir, detectionRange, wallLayer);
 
+            float danger = 0f;
             if (hit.collider != null)
             {
                 float actualDist = hit.distance + 0.1f;
-                float danger = 1f - Mathf.Clamp01(actualDist / detectionRange);
-                dangerMap[i] = danger * wallDangerWeight;
+                danger = 1f - Mathf.Clamp01(actualDist / detectionRange);
+                danger *= wallDangerWeight;
+            }
+
+            dangerMap[i] = danger;
+
+            // Small bias toward continuing the current movement direction.
+            float velocityBias = velocityDir.sqrMagnitude > 0.0001f
+                ? Mathf.Max(0f, Vector2.Dot(dir, velocityDir)) * 0.15f
+                : 0f;
+
+            float rawScore = Mathf.Max(0f, interest + velocityBias - danger);
+            float smoothedScore = Mathf.Lerp(lastFrameScores[i], rawScore, scoreSmoothing);
+
+            lastFrameScores[i] = smoothedScore;
+
+            if (smoothedScore > 0.001f)
+            {
+                finalHeading += dir * smoothedScore;
+                totalWeight += smoothedScore;
             }
         }
 
-        int bestSlot = 0;
-        float maxScore = -999f;
+        if (totalWeight > 0.0001f)
+            finalHeading /= totalWeight;
+        else
+            finalHeading = targetDir;
 
-        if (lastFrameInterests == null || lastFrameInterests.Length != rayCount)
-            lastFrameInterests = new float[rayCount];
+        finalHeading = finalHeading.sqrMagnitude > 0.0001f
+            ? finalHeading.normalized
+            : targetDir;
 
         for (int i = 0; i < rayCount; i++)
         {
-            float score = interestMap[i] - dangerMap[i];
-            score = Mathf.Lerp(lastFrameInterests[i], score, 0.15f);
-            lastFrameInterests[i] = score;
-
-            if (score > maxScore)
-            {
-                maxScore = score;
-                bestSlot = i;
-            }
+            float alignment = Vector2.Dot(rayDirections[i], finalHeading);
+            if (alignment > 0.9f)
+                bestDanger = Mathf.Max(bestDanger, dangerMap[i]);
         }
 
-        Vector2 finalHeading = rayDirections[bestSlot];
-
-        int prev = (bestSlot - 1 + rayCount) % rayCount;
-        int next = (bestSlot + 1) % rayCount;
-        if (dangerMap[prev] < 0.5f) finalHeading += rayDirections[prev] * Mathf.Max(0, interestMap[prev] - dangerMap[prev]);
-        if (dangerMap[next] < 0.5f) finalHeading += rayDirections[next] * Mathf.Max(0, interestMap[next] - dangerMap[next]);
-
-        finalHeading = finalHeading.sqrMagnitude > 0.0001f ? finalHeading.normalized : Vector2.zero;
-
-        float distance = Vector2.Distance(transform.position, targetPos);
+        // Arrival reduces speed near the target unless we are fleeing.
         float arrival = flee ? 1f : Mathf.Pow(Mathf.Clamp01(distance / stopDistance), arrivalSharpness);
-        float braking = Mathf.Clamp01(1f - dangerMap[bestSlot]);
+        float braking = Mathf.Clamp01(1f - bestDanger);
 
         return finalHeading * maxSpeed * arrival * braking;
     }
 
     public void SetTarget(Transform t) => target = t;
+
+    public void ClearTarget() => target = null;
+
     public void SetFlee(bool value) => flee = value;
 
     public void SetSpeedMultiplier(float multiplier)
@@ -160,5 +215,12 @@ public class EnemyLocomotionTask6 : MonoBehaviour
     public void SetStopDistance(float distance)
     {
         stopDistance = Mathf.Max(0.05f, distance);
+    }
+
+    public void StopMovement()
+    {
+        if (rb == null) return;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
     }
 }

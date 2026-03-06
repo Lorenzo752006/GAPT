@@ -1,5 +1,8 @@
 using UnityEngine;
 
+// Task 6 fuzzy controller.
+// Converts health + distance into a continuous aggression value,
+// then maps that to flee/chase speed and stop distance.
 public class EnemyFuzzyController : MonoBehaviour
 {
     [Header("Refs")]
@@ -40,21 +43,20 @@ public class EnemyFuzzyController : MonoBehaviour
         locomotionTask6.SetTarget(player);
 
         float d = Vector2.Distance(transform.position, player.position);
-
         float hp = enemyHealth ? enemyHealth.currentHealth : 100f;
 
-        // STEP 1: FUZZIFY HEALTH
+        // STEP 1: fuzzify health into overlapping memberships.
         float hLow = GradeDown(hp, 25f, 55f);
         float hMed = Triangle(hp, 30f, 55f, 80f);
         float hHigh = GradeUp(hp, 60f, 90f);
 
-        // STEP 2: FUZZIFY DISTANCE
+        // STEP 2: fuzzify distance into close / medium / far memberships.
         float midDist = (closeDist + farDist) * 0.5f;
         float dClose = GradeDown(d, closeDist, midDist);
         float dMed = Triangle(d, closeDist, midDist, farDist);
         float dFar = GradeUp(d, midDist, farDist);
 
-        // STEP 3: RULES (min = AND, max = OR)
+        // STEP 3: fuzzy rules. min acts like AND, max acts like OR.
         float aggrHigh =
             Mathf.Max(
                 Mathf.Min(hHigh, dClose),
@@ -76,7 +78,7 @@ public class EnemyFuzzyController : MonoBehaviour
                 Mathf.Min(hMed, dFar)
             );
 
-        // STEP 4: DEFUZZIFY -> single aggression [0..1]
+        // STEP 4: defuzzify to a single aggression value in [0..1].
         float denom = aggrLow + aggrMed + aggrHigh;
         float aggression = denom <= 0.0001f
             ? 0.5f
@@ -97,6 +99,7 @@ public class EnemyFuzzyController : MonoBehaviour
         float speedMul = Mathf.Lerp(minSpeedMultiplier, maxSpeedMultiplier, aggression);
         locomotionTask6.SetSpeedMultiplier(speedMul);
 
+        // Low aggression = keep more distance. High aggression = close in.
         locomotionTask6.SetStopDistance(Mathf.Lerp(3.0f, 1.2f, aggression));
     }
 
