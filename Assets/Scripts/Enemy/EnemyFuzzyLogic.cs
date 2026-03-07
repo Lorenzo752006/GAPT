@@ -4,8 +4,8 @@ public class EnemyFuzzyController : MonoBehaviour
 {
     [Header("Refs")]
     public Transform player;
-    public EnemyLocomotion locomotion;
-    public EnemyHealth enemyHealth; // NEW: read actual enemy HP
+    public EnemyLocomotionTask6 locomotionTask6;
+    public EnemyHealth enemyHealth;
 
     [Header("Distance thresholds")]
     public float closeDist = 2f;
@@ -23,25 +23,24 @@ public class EnemyFuzzyController : MonoBehaviour
 
     void Reset()
     {
-        locomotion = GetComponent<EnemyLocomotion>();
+        locomotionTask6 = GetComponent<EnemyLocomotionTask6>();
         enemyHealth = GetComponent<EnemyHealth>();
     }
 
     void Awake()
     {
-        if (!locomotion) locomotion = GetComponent<EnemyLocomotion>();
+        if (!locomotionTask6) locomotionTask6 = GetComponent<EnemyLocomotionTask6>();
         if (!enemyHealth) enemyHealth = GetComponent<EnemyHealth>();
     }
 
     void Update()
     {
-        if (!player || !locomotion) return;
+        if (!player || !locomotionTask6) return;
 
-        locomotion.SetTarget(player);
+        locomotionTask6.SetTarget(player);
 
         float d = Vector2.Distance(transform.position, player.position);
 
-        // Read actual enemy HP (fallback to 100 if missing)
         float hp = enemyHealth ? enemyHealth.currentHealth : 100f;
 
         // STEP 1: FUZZIFY HEALTH
@@ -83,7 +82,6 @@ public class EnemyFuzzyController : MonoBehaviour
             ? 0.5f
             : (aggrLow * 0.2f + aggrMed * 0.5f + aggrHigh * 0.9f) / denom;
 
-        // Optional: prove step 1+2 with logs
         if (debugLog)
         {
             Debug.Log(
@@ -93,17 +91,15 @@ public class EnemyFuzzyController : MonoBehaviour
             );
         }
 
-        // Behaviour mapping
         bool shouldFlee = hp < hardFleeHP || aggression < 0.35f;
-        locomotion.SetFlee(shouldFlee);
+        locomotionTask6.SetFlee(shouldFlee);
 
         float speedMul = Mathf.Lerp(minSpeedMultiplier, maxSpeedMultiplier, aggression);
-        locomotion.SetSpeedMultiplier(speedMul);
+        locomotionTask6.SetSpeedMultiplier(speedMul);
 
-        locomotion.SetStopDistance(Mathf.Lerp(3.0f, 1.2f, aggression));
+        locomotionTask6.SetStopDistance(Mathf.Lerp(3.0f, 1.2f, aggression));
     }
 
-    // Membership functions
     static float GradeUp(float x, float a, float b)
     {
         if (x <= a) return 0f;

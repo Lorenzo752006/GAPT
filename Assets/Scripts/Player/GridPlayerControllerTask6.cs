@@ -1,7 +1,7 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // Add this namespace
+using UnityEngine.InputSystem;
 
-public class GridPlayerController : MonoBehaviour
+public class GridPlayerControllerTask6 : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 10f;
@@ -16,9 +16,10 @@ public class GridPlayerController : MonoBehaviour
     [SerializeField] private int startX = 1;
     [SerializeField] private int startY = 1;
 
+    public Vector2Int FacingDirection { get; private set; } = Vector2Int.right;
+
     private void Start()
     {
-        // Place the player at a valid starting grid position
         gridPosition = new Vector2Int(startX, startY);
         targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
         transform.position = targetWorldPosition;
@@ -32,30 +33,21 @@ public class GridPlayerController : MonoBehaviour
 
     private void HandleInput()
     {
-        if (isMoving)
-            return;
+        if (isMoving) return;
 
         cooldownTimer -= Time.deltaTime;
-        if (cooldownTimer > 0f)
-            return;
+        if (cooldownTimer > 0f) return;
 
         Vector2Int direction = Vector2Int.zero;
         Keyboard kb = Keyboard.current;
+        if (kb == null) return;
 
-        if (kb == null)
-            return;
+        if (kb.wKey.isPressed || kb.upArrowKey.isPressed) direction = Vector2Int.up;
+        else if (kb.sKey.isPressed || kb.downArrowKey.isPressed) direction = Vector2Int.down;
+        else if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) direction = Vector2Int.left;
+        else if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) direction = Vector2Int.right;
 
-        if (kb.wKey.isPressed || kb.upArrowKey.isPressed)
-            direction = Vector2Int.up;
-        else if (kb.sKey.isPressed || kb.downArrowKey.isPressed)
-            direction = Vector2Int.down;
-        else if (kb.aKey.isPressed || kb.leftArrowKey.isPressed)
-            direction = Vector2Int.left;
-        else if (kb.dKey.isPressed || kb.rightArrowKey.isPressed)
-            direction = Vector2Int.right;
-
-        if (direction == Vector2Int.zero)
-            return;
+        if (direction == Vector2Int.zero) return;
 
         TryMove(direction);
     }
@@ -64,20 +56,25 @@ public class GridPlayerController : MonoBehaviour
     {
         Vector2Int targetGrid = gridPosition + direction;
 
-        // Ask the GridManager if the target cell is walkable
         if (GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
         {
+            FacingDirection = direction; // IMPORTANT
+
             gridPosition = targetGrid;
             targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
             isMoving = true;
             cooldownTimer = moveCooldown;
         }
+        else
+        {
+            // Still update facing even if blocked (optional but useful)
+            FacingDirection = direction;
+        }
     }
 
     private void SmoothMove()
     {
-        if (!isMoving)
-            return;
+        if (!isMoving) return;
 
         transform.position = Vector3.MoveTowards(
             transform.position,
@@ -92,9 +89,6 @@ public class GridPlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Returns the player's current logical grid position.
-    /// </summary>
     public Vector2Int GetGridPosition()
     {
         return gridPosition;
