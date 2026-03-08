@@ -6,10 +6,10 @@ using UnityEngine;
 /// </summary>
 public class MoveTowardsPlayer : BTNode
 {
-    private EnemyLocomotion locomotion;
+    private EnemyLocomotionTask5 locomotion;
     private Transform player;
 
-    public MoveTowardsPlayer(EnemyLocomotion locomotion, Transform player)
+    public MoveTowardsPlayer(EnemyLocomotionTask5 locomotion, Transform player)
     {
         this.locomotion = locomotion;
         this.player = player;
