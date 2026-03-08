@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class PlayerSlashAttack : MonoBehaviour
 {
     [Header("Refs")]
-    [SerializeField] private GridPlayerController playerController;
+    [SerializeField] private GridPlayerControllerTask6 playerController;
 
     [Header("Attack")]
     [SerializeField] private float damage = 25f;
@@ -13,15 +13,16 @@ public class PlayerSlashAttack : MonoBehaviour
     private float cooldownTimer;
 
     [Header("Slash Visual")]
-    [SerializeField] private GameObject slashPrefab;   // Drag SlashFX prefab here
+    [SerializeField] private GameObject slashPrefab;
     [SerializeField] private float slashLifetime = 0.15f;
 
     [Header("Placement")]
-    [SerializeField] private float halfTileOffset = 0.5f; // for 1-unit tiles; use cellSize*0.5 if different
+    [SerializeField] private float halfTileOffset = 0.5f;
 
     void Awake()
     {
-        if (!playerController) playerController = GetComponent<GridPlayerController>();
+        if (!playerController)
+            playerController = GetComponent<GridPlayerControllerTask6>();
     }
 
     void Update()
@@ -49,10 +50,8 @@ public class PlayerSlashAttack : MonoBehaviour
         Vector2Int left = new Vector2Int(-f.y, f.x);
         Vector2Int right = new Vector2Int(f.y, -f.x);
 
-        // Spawn the slash sprite (visual only)
         SpawnSlashFX(origin, f);
 
-        // Damage cells: F, 2F, 3F, F+L, F+R
         Vector2Int[] cells =
         {
             origin + f * 1,
@@ -75,17 +74,11 @@ public class PlayerSlashAttack : MonoBehaviour
     {
         if (!slashPrefab) return;
 
-        // Tile directly in front
         Vector2Int slashCell = originCell + facing;
-
-        // Base world pos from your grid
         Vector3 worldPos = GridManager.Instance.GridToWorld(slashCell.x, slashCell.y);
 
-        // Directional offset (NOT always (0.5,0.5)):
-        // left (-0.5, 0), right (+0.5, 0), up (0, +0.5), down (0, -0.5)
         worldPos += new Vector3(facing.x, facing.y, 0f) * halfTileOffset;
 
-        // Rotate sprite based on facing (assumes sprite points RIGHT at 0 deg)
         Quaternion rot = RotationFromFacing(facing);
 
         GameObject fx = Instantiate(slashPrefab, worldPos, rot);
@@ -101,7 +94,6 @@ public class PlayerSlashAttack : MonoBehaviour
         return Quaternion.identity;
     }
 
-    // Snapshot iteration fix: prevents "Collection was modified" when enemies die
     private void DamageEnemiesInCell(Vector2Int cell)
     {
         List<EnemyHealth> snapshot = new List<EnemyHealth>(EnemyHealth.Active);
