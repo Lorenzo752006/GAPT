@@ -168,18 +168,18 @@ MonoBehaviour:
   goalY: 13
   usePlayerPositionAsGoal: 1
   totalEpisodes: 5000
-  maxStepsPerEpisode: 200
+  maxStepsPerEpisode: 1000
   learningRate: 0.1
   discountFactor: 0.95
   startExplorationRate: 1
   minExplorationRate: 0.01
-  explorationDecay: 0.995
-  rewardGoal: 100
+  explorationDecay: 0.999
+  rewardGoal: 1000
   penaltyWall: -10
-  penaltyStep: -1
+  penaltyStep: 0
   retrainOnGoalChange: 1
-  retrainCheckInterval: 1
-  retrainEpisodes: 2000
+  retrainCheckInterval: 0.5
+  retrainEpisodes: 5000
   showTrainingLog: 1
   showQValueGizmos: 1
   trainingStatus: Not Started
@@ -707,7 +707,7 @@ Transform:
   m_GameObject: {fileID: 2125404018}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15.35, y: 4.17, z: 0}
+  m_LocalPosition: {x: 4.13, y: 4.17, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -728,6 +728,9 @@ MonoBehaviour:
   player: {fileID: 1051132958}
   decisionInterval: 0.3
   arrivalThreshold: 0.4
+  cellEntryThreshold: 0.5
+  maxLookAheadCells: 3
+  dynamicLookaheadDistance: 5
   showGizmos: 1
   currentAction: "\u2014"
   currentGridPos: "\u2014"

@@ -915,7 +915,7 @@ MonoBehaviour:
   fleeRange: 1
   searchRadius: 4
   searchDuration: 8
-  usePathfinding: 0
+  usePathfinding: 1
   showGizmos: 1
   showGizmosAlways: 0
   activeBehaviour: "\u2014"
