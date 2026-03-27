@@ -1,0 +1,889 @@
+================================================================================
+  TASK 5 — BEHAVIOUR TREE (BT) AI SYSTEM
+  Documentation
+================================================================================
+
+TABLE OF CONTENTS
+—————————————————
+  1. Overview
+  2. What is a Behaviour Tree?
+  3. Architecture & File Map
+  4. Core Infrastructure
+     4.1 BTNodeStatus
+     4.2 BTNode
+     4.3 BTComposite
+     4.4 BTSequence
+     4.5 BTSelector
+     4.6 BTInverter
+     4.7 BTAction
+  5. Pathfinding Infrastructure
+     5.1 GridPathfinder
+     5.2 PathFollower
+  6. Leaf Nodes
+     6.1 CheckDistanceToPlayer
+     6.2 CheckLineOfSight
+     6.3 MoveTowardsPlayer
+     6.4 FleeFromPlayer
+     6.5 Patrol
+     6.6 SearchArea
+     6.7 IdleWait
+  7. The Decision Tree (EnemyBT)
+  8. Complete Feature List
+  9. Debug Gizmos
+  10. Setup Guide
+  11. How to Extend
+  12. AI Behaviour Flow
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+This system replaces simple direct-chase enemy logic with a modular Behaviour
+Tree. A Behaviour Tree is a decision-making architecture used widely in game AI.
+It structures decisions as a tree of reusable nodes, making complex behaviours
+easy to build, read, and maintain — avoiding the "spaghetti" problem of large
+state machines.
+
+The BT integrates with the existing EnemyLocomotion steering system. The BT
+decides WHAT the enemy should do; EnemyLocomotion handles HOW it moves.
+
+Key features:
+  • Reactive tree that immediately responds to world changes
+  • Distance-based detection (chase range)
+  • Line-of-sight checks prevent chasing through walls
+  • A* pathfinding ensures navigation around obstacles
+  • Last-known-location investigation after player escapes
+  • Flee mechanics when player is dangerously close
+  • Free patrol when no target information
+  • Full debug visualization with colour-coded gizmos and path drawing
+  • Fully modular and extensible architecture
+
+================================================================================
+2. WHAT IS A BEHAVIOUR TREE?
+================================================================================
+
+A Behaviour Tree works like a top-down flowchart. Each frame, the tree is
+"ticked" from the root. Every node returns one of three statuses:
+
+  • Success  — The action completed successfully.
+  • Failure  — The action or condition failed.
+  • Running  — The action is still in progress (will continue next tick).
+
+Nodes fall into three categories:
+
+  COMPOSITE NODES (flow control)
+    Control how children are evaluated. The two fundamental composites are:
+
+    Sequence ("AND")
+      Runs children left-to-right. Stops on the FIRST Failure.
+      Returns Success only if ALL children succeed.
+      Think: "Do ALL of these things."
+
+    Selector ("OR")
+      Runs children left-to-right. Stops on the FIRST Success.
+      Returns Failure only if ALL children fail.
+      Think: "Try these until one works."
+
+  DECORATOR NODES (modifiers)
+    Wrap a single child and modify its result.
+
+    Inverter ("NOT")
+      Flips Success ? Failure. Running stays Running.
+
+  LEAF NODES (actions & conditions)
+    The actual work. These check conditions or perform actions.
+
+Example mental model:
+
+    Selector
+    ??? Sequence: "Attack"
+    ?   ??? IsEnemyVisible?        (condition leaf)
+    ?   ??? AttackEnemy             (action leaf)
+    ??? Patrol                     (action leaf)
+
+    Translation: "If I can see an enemy, attack it. Otherwise, patrol."
+
+================================================================================
+3. ARCHITECTURE & FILE MAP
+================================================================================
+
+All files are in: Assets/Scripts/Task 5/BT/
+
+  BT/
+      BTNodeStatus.cs              Enum: Success, Running, Failure
+      BTNode.cs                    Abstract base class
+      BTComposite.cs               Abstract base for composite nodes
+      BTSequence.cs                Sequence composite ("AND")
+      BTSelector.cs                Selector composite ("OR")
+      BTInverter.cs                Decorator: inverts child result
+      BTAction.cs                  Generic leaf using a delegate
+      GridPathfinder.cs            A* pathfinding on the GridManager grid
+      PathFollower.cs              Path-following helper (node-by-node navigation)
+      EnemyBT.cs                   MonoBehaviour — builds & ticks the tree
+      Leaves/
+          CheckDistanceToPlayer.cs Condition: is player within range?
+          CheckLineOfSight.cs      Condition: can enemy see the player?
+          MoveTowardsPlayer.cs     Action: steer toward player
+          FleeFromPlayer.cs        Action: steer away from player
+          Patrol.cs                Action: wander using A* paths
+          SearchArea.cs            Action: investigate area using A* paths
+          IdleWait.cs              Action: wait for a duration
+      Pathfinding/
+          GridPathfinder.cs        A* pathfinding core
+          PathFollower.cs          Follows a path with steering
+
+================================================================================
+4. CORE INFRASTRUCTURE
+================================================================================
+
+4.1 BTNodeStatus
+????????????????
+  File: BTNodeStatus.cs
+
+  A simple enum with three values:
+    - Success
+    - Running
+    - Failure
+
+  Every node in the tree must return one of these.
+
+4.2 BTNode
+??????????
+  File: BTNode.cs
+
+  Abstract base class. All nodes (composites, decorators, leaves) inherit
+  from this. Defines a single abstract method:
+
+    public abstract BTNodeStatus Tick();
+
+4.3 BTComposite
+???????????????
+  File: BTComposite.cs
+
+  Abstract base for nodes that hold an ordered list of children.
+  Provides:
+    - A protected List<BTNode> children
+    - A constructor accepting params BTNode[]
+    - An AddChild(BTNode) method
+
+4.4 BTSequence
+??????????????
+  File: BTSequence.cs
+
+  Inherits BTComposite. Evaluates children left-to-right each tick.
+
+  This is a REACTIVE sequence: it always re-evaluates from child 0 every
+  tick. This ensures conditions (like distance checks) are rechecked each
+  frame, allowing the tree to respond immediately to changes in the world.
+
+  Behaviour:
+    - If a child returns Failure -> immediately return Failure (short-circuit).
+    - If a child returns Running -> return Running.
+    - If all children return Success -> return Success.
+
+  Use case: "Do step 1, then step 2, then step 3. Stop if any step fails."
+
+4.5 BTSelector
+??????????????
+  File: BTSelector.cs
+
+  Inherits BTComposite. Evaluates children left-to-right each tick.
+
+  This is a REACTIVE selector: it always re-evaluates from child 0 every
+  tick. This means higher-priority branches (earlier children) can pre-empt
+  lower-priority ones that were previously Running.
+
+  Behaviour:
+    - If a child returns Success -> immediately return Success (short-circuit).
+    - If a child returns Running -> return Running.
+    - If all children return Failure -> return Failure.
+
+  Use case: "Try option A. If it fails, try option B. If that fails too..."
+
+  IMPORTANT: Because evaluation always starts from child 0, the tree is
+  fully reactive. If child 1 (e.g. Patrol) was Running and then child 0
+  (e.g. Chase) becomes viable, the Selector will switch to Chase immediately.
+
+4.6 BTInverter
+??????????????
+  File: BTInverter.cs
+
+  A decorator node that wraps a single child and inverts its result:
+    - Success ? Failure
+    - Failure ? Success
+    - Running ? Running (unchanged)
+
+  Use case: "Succeed if the player is NOT in range."
+    new BTInverter(new CheckDistanceToPlayer(enemy, player, 5f))
+
+4.7 BTAction
+????????????
+  File: BTAction.cs
+
+  A generic leaf node that takes a System.Func<BTNodeStatus> delegate.
+  Useful for quick inline actions without needing a dedicated class:
+
+    new BTAction(() => {
+        Debug.Log("Hello from a BT leaf!");
+        return BTNodeStatus.Success;
+    });
+
+================================================================================
+5. PATHFINDING INFRASTRUCTURE
+================================================================================
+
+5.1 GridPathfinder
+------------------
+  File: GridPathfinder.cs
+
+  A static utility class that implements A* pathfinding on the GridManager
+  grid. Finds the shortest walkable path between two grid cells.
+
+  Method:
+    static List<Vector2Int> FindPath(Vector2Int start, Vector2Int end)
+
+  Features:
+    - Supports 8-directional movement (cardinal + diagonal).
+    - Diagonal moves use correct cost (14 vs 10 for cardinal).
+    - Prevents corner-cutting: diagonal moves are only allowed if both
+      adjacent cardinal cells are walkable (so the AI won't squeeze
+      through diagonal wall gaps).
+    - Uses Chebyshev distance heuristic (optimal for 8-direction grids).
+    - Returns an empty list if no path exists.
+    - Returns a list from start to end (inclusive) if path found.
+
+  This is the core algorithm that Patrol and SearchArea use to ensure
+  the enemy never gets a waypoint it can't actually reach.
+
+5.2 PathFollower
+----------------
+  File: PathFollower.cs
+
+  A helper class that manages following an A* path node-by-node. Used by
+  both Patrol and SearchArea to navigate along computed paths.
+
+  Constructor: (Transform enemy, Transform waypointTarget,
+                float nodeArrivalThreshold = 0.5f)
+
+  Methods:
+    - SetDestination(Vector2Int targetCell)
+        Computes an A* path from the enemy's current position to the
+        target grid cell. Returns true if a valid path was found.
+
+    - SetDestinationWorld(Vector3 worldPos)
+        Same as above but accepts a world position (converts to grid).
+
+    - Tick()
+        Call each frame. Checks if the enemy has arrived at the current
+        path node. If so, advances to the next node and updates the
+        waypointTarget transform. Returns false when the path is complete.
+
+    - Clear()
+        Clears the current path.
+
+  Properties:
+    - HasPath         — True if a valid path with nodes remaining exists.
+    - IsComplete      — True if the enemy reached the final node.
+    - CurrentPath     — The list of grid positions (for gizmo drawing).
+    - CurrentIndex    — The index of the node currently being pursued.
+    - Destination     — The final destination grid cell.
+
+  How it works:
+    1. Patrol/SearchArea picks a random destination and calls SetDestination.
+    2. PathFollower computes the A* path via GridPathfinder.
+    3. Each tick, PathFollower checks if the enemy is close enough to the
+       current node. If so, it advances currentIndex and moves the
+       waypointTarget to the next node's world position.
+    4. EnemyLocomotion steers toward waypointTarget (one node ahead),
+       so the enemy follows the path naturally around corners and walls.
+    5. When currentIndex reaches the end, Tick() returns false and the
+       leaf node picks a new destination.
+
+================================================================================
+6. LEAF NODES
+================================================================================
+
+6.1 CheckDistanceToPlayer
+--------------------------
+  File: Leaves/CheckDistanceToPlayer.cs
+
+  Constructor: (Transform enemy, Transform player, float range)
+
+  A condition node. Measures the 2D distance between the enemy and player.
+    - Returns Success if distance <= range.
+    - Returns Failure otherwise.
+
+  Does NOT move anything — purely a check.
+
+6.2 CheckLineOfSight
+--------------------
+  File: Leaves/CheckLineOfSight.cs
+
+  Constructor: (Transform enemy, Transform player, LayerMask wallLayer)
+
+  A condition node. Raycasts from the enemy to the player using
+  Physics2D.Raycast against the wallLayer.
+    - Returns Success if no wall blocks the path (clear line of sight).
+    - Returns Failure if a wall is hit before reaching the player.
+
+  Does NOT move anything — purely a visibility check.
+  The wallLayer is read from EnemyLocomotion.GetWallLayer() so it stays
+  in sync with the steering system's obstacle detection.
+
+6.3 MoveTowardsPlayer
+---------------------
+  File: Leaves/MoveTowardsPlayer.cs
+
+  Constructor: (EnemyLocomotion locomotion, Transform player)
+
+  An action node. Sets the EnemyLocomotion target to the player and
+  disables flee mode. Always returns Running (chasing is continuous).
+
+6.4 FleeFromPlayer
+------------------
+  File: Leaves/FleeFromPlayer.cs
+
+  Constructor: (EnemyLocomotion locomotion, Transform player)
+
+  An action node. Sets the EnemyLocomotion target to the player and
+  enables flee mode. Always returns Running.
+
+6.5 Patrol
+----------
+  File: Leaves/Patrol.cs
+
+  Constructor: (EnemyLocomotion locomotion, Transform enemy,
+                Transform waypointTarget,
+                float arrivalThreshold = 0.5f,
+                float waypointTimeout = 8f)
+
+  An action node. Picks a random walkable cell from the GridManager and
+  uses A* pathfinding (via PathFollower) to compute a wall-safe route.
+  The enemy follows the path node-by-node, navigating around walls and
+  obstacles instead of steering directly at a potentially unreachable cell.
+
+  When the enemy completes the path or the timeout expires, a new random
+  destination is chosen and a fresh path is computed. Always returns Running.
+
+  Exposes: PathFollower property for gizmo access (A* path visualization).
+
+  Requires GridManager.Instance to be available.
+
+6.6 SearchArea
+--------------
+  File: Leaves/SearchArea.cs
+
+  Constructor: (EnemyLocomotion locomotion, Transform enemy,
+                Transform waypointTarget,
+                float searchRadius = 3f, float searchDuration = 6f,
+                float arrivalThreshold = 0.5f, float waypointTimeout = 4f)
+
+  An action node. Patrols near a specific world position (the "search centre")
+  by picking random walkable grid cells within searchRadius of that point.
+  Uses A* pathfinding (via PathFollower) to compute wall-safe routes to
+  each search waypoint.
+
+  Behaviour:
+    - Returns Running while the search timer is below searchDuration.
+    - Returns Success when the search timer expires (search complete).
+    - Computes a new A* path when the enemy arrives at the current waypoint
+      or the per-waypoint timeout expires.
+
+  Methods:
+    - SetSearchCentre(Vector3) — sets a new centre and resets the timer.
+    - GetSearchCentre()        — returns the current centre position.
+    - GetSearchRadius()        — returns the configured radius.
+
+  Exposes: PathFollower property for gizmo access (A* path visualization).
+
+  Used by the "Investigate" branch in EnemyBT to search the area where
+  the player was last seen before escaping line of sight.
+
+6.7 IdleWait
+------------
+  File: Leaves/IdleWait.cs
+
+  Constructor: (float duration)
+
+  An action node. Counts up each tick using Time.deltaTime.
+    - Returns Running while the timer is below the duration.
+    - Returns Success when the timer expires, then resets.
+
+  Use case: Add pauses between patrol waypoints or before attacking.
+
+================================================================================
+7. THE DECISION TREE (EnemyBT)
+================================================================================
+
+  File: EnemyBT.cs
+  Component: Attach to any enemy GameObject (alongside EnemyLocomotion).
+
+  Inspector fields:
+    - player           — Drag the player's Transform here.
+    - chaseRange       — Distance at which the enemy starts chasing (default 8).
+    - fleeRange        — Distance at which the enemy runs away (default 2).
+    - searchRadius     — How far from last known position the enemy searches (default 3).
+    - searchDuration   — How long the enemy investigates before giving up (default 6).
+    - showGizmos       — Show gizmos when the enemy is selected (default true).
+    - showGizmosAlways — Show gizmos even when not selected (default false).
+
+  Read-only runtime info (visible in the Inspector during Play mode):
+    - activeBehaviour — Current state: Patrol, Chase, Flee, or Investigate.
+    - lastTickResult  — The last status returned by the root node.
+
+  The assembled tree:
+
+    Selector (root)
+    ??? Sequence: "Engage"
+    ?   ??? CheckDistanceToPlayer(chaseRange)     ? In range?
+    ?   ??? CheckLineOfSight(wallLayer)           ? Can see player?
+    ?   ??? Selector: "How to engage"
+    ?       ??? Sequence: "Flee if dangerously close"
+    ?       ?   ??? CheckDistanceToPlayer(fleeRange) ? Too close?
+    ?       ?   ??? FleeFromPlayer                   ? Run away!
+    ?       ??? Chase (MoveTowardsPlayer)             ? Otherwise, chase.
+    ??? Sequence: "Investigate"
+    ?   ??? HasLastKnownLocation?                     ? Was the player seen?
+    ?   ??? SearchArea(lastKnownPosition)             ? Search that area.
+    ??? Patrol                                        ? Nothing to investigate, wander.
+
+  Last Known Location Mechanic:
+    While chasing or fleeing, the enemy continuously records the player's
+    position as the "last known location". When the player escapes (breaks
+    LOS or leaves chase range), the Engage branch fails and the tree falls
+    through to the Investigate branch.
+
+    The Investigate branch checks if a last known location exists. If so,
+    SearchArea patrols near that spot for searchDuration seconds. When the
+    timer expires, the last known location is cleared and the enemy falls
+    through to normal Patrol.
+
+    If the player re-enters range + LOS during investigation, the Engage
+    branch immediately pre-empts (reactive tree) and resumes chasing.
+
+  Tick order each frame:
+    1. Root Selector tries the Engage sequence.
+    2. Engage checks: in range AND has LOS?
+       - NO  ? Failure ? try Investigate.
+       - YES ? flee or chase depending on proximity.
+    3. Investigate checks: has a last known location?
+       - NO  ? Failure ? fall through to Patrol.
+       - YES ? SearchArea ticks (Running). When search expires ? clears
+               location ? next tick falls through to Patrol.
+    4. Patrol: wander randomly.
+
+================================================================================
+8. COMPLETE FEATURE LIST
+================================================================================
+
+The Behaviour Tree system implements the following AI features:
+
+  DISTANCE DETECTION
+    • Chase Range: Enemy detects and begins chasing when player enters a
+      configurable radius (default 8 units).
+    • Flee Range: Enemy switches to flee mode if player gets too close
+      (default 2 units).
+    • Both ranges are visualized as concentric circles in the Scene view
+      (yellow = chase, red = flee).
+
+  LINE-OF-SIGHT DETECTION
+    • Raycasts from enemy to player through the wall layer.
+    • Prevents enemies from chasing players who are on the opposite side
+      of a wall (creates intelligent obstacle awareness).
+    • Green dashed line = clear visibility, Magenta dashed line = blocked.
+    • Only active when player is within chase range.
+
+  A* PATHFINDING
+    • Grid-based A* pathfinding using the existing GridManager grid.
+    • Supports 8-directional movement (cardinal + diagonal).
+    • Prevents corner-cutting through diagonal wall gaps.
+    • Used by Patrol and SearchArea to compute wall-safe routes.
+    • The enemy follows the path node-by-node, navigating around walls
+      and obstacles smoothly.
+    • Eliminates the problem of waypoints spawning behind walls and
+      causing the AI to push against walls endlessly.
+    • Path visualized as connected line segments with node markers in
+      the Scene view gizmos.
+
+  CHASE BEHAVIOUR
+    • Activates when: player in range AND has line of sight.
+    • Continuously records player's position as "last known location".
+    • Uses EnemyLocomotion steering to smoothly pursue the target.
+    • Immediately pre-empts (interrupts) other behaviours if triggered.
+    • Displayed in orange with orange state indicator.
+
+  FLEE BEHAVIOUR
+    • Activates when: player within flee range (even while chasing).
+    • Moves away from the player at max speed.
+    • Uses EnemyLocomotion in flee mode.
+    • Displayed in red with red state indicator and dashed line.
+
+  LAST KNOWN LOCATION INVESTIGATION
+    • Whenever the enemy was chasing or fleeing, the player's position is
+      continuously recorded.
+    • When player escapes (breaks LOS or leaves chase range), the enemy
+      remembers where the player was last seen.
+    • The enemy investigates the area for searchDuration seconds (default 6s).
+    • Picks random walkable cells within searchRadius (default 3 units) of
+      the last known position and pathfinds to them.
+    • If the player re-enters range + LOS during investigation, pursuit
+      immediately resumes (reactive tree pre-emption).
+    • If search expires with no contact, the memory is cleared and normal
+      patrol resumes.
+    • Displayed in gold/yellow with crosshair marker at last known position.
+
+  PATROL BEHAVIOUR
+    • Activates when: no chase target and no last known location.
+    • Picks random walkable grid cells across the entire map.
+    • Uses A* pathfinding to compute a safe route around walls.
+    • Follows the path node-by-node, picking a new destination when
+      arriving or on timeout.
+    • No memory of where the player was.
+    • Displayed in cyan with cyan state indicator and path visualization.
+
+  PHYSICS-BASED STEERING
+    • Integrated with EnemyLocomotion's context steering system.
+    • Raycasts in all directions to detect walls and obstacles.
+    • Smoothly blends interest (goal) with danger (obstacles).
+    • Momentum-based movement with acceleration and braking.
+    • Visual rotation that matches velocity direction.
+    • Prevents wall-bumping and sliding with grip strength tuning.
+
+  TEMPORAL SMOOTHING (HYSTERESIS)
+    • Movement decisions are smoothed across frames to prevent jitter.
+    • Direction changes are gradual and natural-looking.
+    • Particularly visible when steering around obstacles.
+
+  REACTIVITY
+    • The tree structure is fully reactive: every tick re-evaluates from
+      the root, checking all conditions.
+    • No child index memory (unlike traditional BTs with resumable states).
+    • Higher-priority branches immediately interrupt lower ones.
+    • Example: Player enters range mid-patrol ? Chase begins instantly.
+    • Example: Player exits range during chase ? Investigation begins next tick.
+
+================================================================================
+9. DEBUG GIZMOS
+================================================================================
+
+When gizmos are enabled (showGizmos or showGizmosAlways), the following
+visualisations are drawn in the Scene view:
+
+  ALWAYS VISIBLE (edit & play mode):
+    • Yellow circle  — Chase range radius around the enemy.
+    • Red circle     — Flee range radius around the enemy.
+
+  PLAY MODE ONLY:
+    • State label    — Text above the enemy showing "Patrol", "Chase", "Flee",
+                       or "Investigate" in the corresponding colour.
+    • State indicator — Small coloured sphere above the enemy.
+    • LOS indicator  — When the player is within chase range, a dashed line is
+                       drawn from enemy to player:
+                         Green  = clear line of sight
+                         Magenta = blocked by a wall
+    • Last known position — When a last known location exists:
+                         Gold wire sphere with crosshair at the position.
+                         Gold wire circle showing the search radius (visible
+                         during Investigate state).
+    • A* path        — When patrolling or investigating, the computed path is
+                       drawn as connected line segments:
+                         Solid line from enemy to current path node.
+                         Dimmed lines between remaining path nodes.
+                         Small wire spheres at each node.
+                         Larger sphere at the final destination.
+
+    When PATROLLING (cyan):
+      • A* path from enemy ? each node ? final destination.
+      • Cyan lines and node markers.
+
+    When CHASING (orange):
+      • Solid line from enemy ? player (direct, no pathfinding needed).
+      • Wire sphere around the player.
+
+    When FLEEING (red):
+      • Dashed line from enemy ? player.
+      • Wire sphere around the player.
+
+    When INVESTIGATING (gold/yellow):
+      • A* path from enemy ? each node ? search waypoint.
+      • Gold lines and node markers.
+      • Wire circle showing the search radius around last known position.
+      • Crosshair marker at last known position.
+
+  Inspector (during Play mode):
+    • "Active Behaviour" field shows the current state as text.
+    • "Last Tick Result" shows the root node's last return status.
+
+  Tip: Enable "showGizmosAlways" to see all enemies' state at a glance
+  without selecting them individually.
+
+================================================================================
+10. SETUP GUIDE
+================================================================================
+
+  Step 1: Ensure the scene has:
+    - A GridManager with a generated map.
+    - A Player GameObject with a GridPlayerController.
+    - Wall colliders on all obstacles (using the Wall layer).
+
+  Step 2: Create an enemy GameObject:
+    - Add a Sprite Renderer with a simple sprite (circle or character).
+    - Add a Rigidbody2D component.
+      * Body Type: Dynamic
+      * Gravity Scale: 0
+      * Collision Detection: Continuous
+      * Constraints: Freeze Rotation Z (so only code rotates the sprite)
+    - Add a CircleCollider2D (for basic shape, or Box if preferred).
+      * Set to a reasonable radius (e.g. 0.4 units to match agentRadius).
+      * Should not be on the Wall layer.
+    - Add the EnemyLocomotion component.
+      * Assign the Wall LayerMask (same layer as walls in your scene).
+      * Leave the "target" field empty (BT will set it at runtime).
+      * Tune steering parameters to taste (acceleration, maxSpeed, etc.).
+    - Add the EnemyBT component.
+      * Drag the Player's Transform into the "Player" field.
+      * Set chaseRange to taste (8 is a good default).
+      * Set fleeRange to taste (2 is a good default).
+      * Set searchRadius (3 is a good default).
+      * Set searchDuration (6 seconds is a good default).
+      * Enable showGizmos for debugging.
+
+  Step 3: Press Play. The enemy will:
+    - Patrol randomly when the player is far away (cyan state).
+    - Chase the player when they enter chase range + LOS (orange state).
+    - Flee when the player gets too close (red state).
+    - Investigate the last known location if player escapes (gold state).
+    - Resume normal patrol after investigation expires.
+
+  Step 4: Select the enemy in the Scene view to see the debug gizmos:
+    - Yellow circle = chase range
+    - Red circle = flee range
+    - Orange/Gold line = current target (player or waypoint)
+    - Gold crosshair = last known player position
+    - Gold circle = investigation search radius (during Investigate state)
+    - State label above enemy showing current behaviour
+
+  Optional tuning:
+    - Adjust chaseRange and fleeRange in the inspector to change detection.
+    - Adjust searchRadius and searchDuration for investigation behaviour.
+    - In EnemyLocomotion, tune rayCount, detectionRange, wallDangerWeight
+      for different steering feels.
+
+================================================================================
+11. HOW TO EXTEND
+================================================================================
+
+The system is designed to be modular. Here are common extensions:
+
+  ADD A NEW CONDITION:
+    1. Create a new class inheriting from BTNode.
+    2. Implement Tick() to return Success or Failure based on your check.
+    3. Snap it into the tree in EnemyBT.BuildTree().
+
+    Example — "Is enemy health low?":
+
+      public class CheckHealthLow : BTNode
+      {
+          private EnemyHealth health;
+          private float threshold;
+
+          public CheckHealthLow(EnemyHealth health, float threshold)
+          {
+              this.health = health;
+              this.threshold = threshold;
+          }
+
+          public override BTNodeStatus Tick()
+          {
+              return health.Current <= threshold
+                  ? BTNodeStatus.Success
+                  : BTNodeStatus.Failure;
+          }
+      }
+
+  ADD A NEW ACTION:
+    Same pattern, but return Running while the action is in progress and
+    Success when done. Use BTAction for quick inline actions.
+
+    Example — "Emit a growl sound":
+
+      var growlNode = new BTAction(() => {
+          AudioSource.PlayClipAtPoint(growlSound, transform.position);
+          return BTNodeStatus.Success;
+      });
+
+  ADD A NEW DECORATOR:
+    Inherit from BTNode, hold a single child, modify its Tick() result.
+    See BTInverter as a template.
+
+    Common decorators:
+      - Repeater     — Ticks a child N times or forever.
+      - Succeeder    — Always returns Success regardless of the child.
+      - RepeatUntilFail — Keeps ticking the child until it fails.
+      - Cooldown     — Returns Running for X seconds before letting child tick.
+
+  MODIFY THE TREE SHAPE:
+    Open EnemyBT.BuildTree(). The tree is assembled purely in code, so you
+    can add new branches, reorder priorities, or nest deeper.
+
+    Example — add an idle pause between patrol waypoints:
+
+      var patrolWithPause = new BTSequence(
+          new Patrol(locomotion, transform, waypointHelper),
+          new IdleWait(2f)
+      );
+
+    Example — add an "alert" state when spotting the player:
+
+      var alertSequence = new BTSequence(
+          new CheckDistanceToPlayer(transform, player, alertRange),
+          new IdleWait(0.5f),  // Pause to "notice" the player
+          chaseAction
+      );
+
+  USE BTAction FOR QUICK PROTOTYPING:
+    Instead of creating a whole new class, use an inline delegate:
+
+      var logNode = new BTAction(() => {
+          Debug.Log("Enemy is thinking...");
+          return BTNodeStatus.Success;
+      });
+
+  COMMON EXTENSIONS:
+    
+    Attack behaviour:
+      When within attack range, play attack animation instead of moving.
+      Use CheckDistanceToPlayer with a small range and an AttackAction leaf.
+
+    Health/Damage system:
+      Add a CheckHealthLow condition to switch to "flee all players" mode
+      or "seek healing item" branch.
+
+    Group coordination:
+      Add a CheckAllyNearby condition to switch from chase to coordinated
+      multi-enemy tactics.
+
+    Hearing/Sound detection:
+      Add CheckHearNoise condition (check distance to recent explosion, etc.)
+      to set last known location without direct LOS.
+
+    Aggression scaling:
+      Add a "rage" state that speeds up movement or shortens flee range
+      based on health or hits taken.
+
+    Patrol patterns:
+      Instead of random patrol, create specific waypoints and cycle through
+      them using a separate waypoint list system.
+
+================================================================================
+12. AI BEHAVIOUR FLOW
+================================================================================
+
+SCENARIO 1: DETECTING THE PLAYER
+  • Enemy is patrolling. Player walks nearby (within 8 units = chaseRange).
+  • Tick 1: Engage sequence checks distance ? Success. Checks LOS ? Success.
+  • Engage selector runs: flee sequence fails (too far). Chase runs.
+  • Current state: CHASE (orange)
+  • Last known location recorded.
+
+SCENARIO 2: PLAYER HIDES BEHIND WALL
+  • Enemy is chasing. Player runs behind a wall.
+  • Tick N: Distance check ? Success (still 5 units away through wall).
+  • LOS check ? Failure (raycast hits wall).
+  • Engage sequence fails (requires both distance AND LOS).
+  • Investigate checks: has last known location? ? Yes.
+  • Current state: INVESTIGATE (gold)
+  • Enemy patrols within 3 units of the wall (where player was seen).
+
+SCENARIO 3: SEARCH TIMEOUT
+  • Enemy has been investigating for 6 seconds with no contact.
+  • Search timer expires, SearchArea returns Success.
+  • Investigate sequence fails (SearchArea no longer Running).
+  • Patrol fallback activates.
+  • Current state: PATROL (cyan)
+  • Normal random patrol resumes. Last known location is cleared.
+
+SCENARIO 4: PLAYER RE-EMERGES
+  • Enemy is investigating near last known location.
+  • Player runs out from behind the wall, now 6 units away + clear LOS.
+  • Tick M: Distance check ? Success. LOS check ? Success.
+  • Engage branch succeeds, immediately pre-empts Investigate.
+  • Current state: CHASE (orange)
+  • Pursuit resumes. Last known location updated to new position.
+
+SCENARIO 5: PLAYER TOO CLOSE
+  • Enemy is chasing. Player closes distance to 1.5 units.
+  • Tick P: Distance check ? Success. LOS check ? Success.
+  • Engage selector tries Flee sequence.
+  • Flee distance check (fleeRange = 2) ? Success.
+  • FleeFromPlayer runs.
+  • Current state: FLEE (red)
+  • Enemy moves away at max speed.
+
+SCENARIO 6: CHASE + OBSTACLE
+  • Enemy is chasing. Wall blocks direct path.
+  • EnemyLocomotion steering raycasts detect danger.
+  • Steering system smoothly blends around the wall.
+  • Enemy does not blindly walk into wall.
+  • Continues pursuing via available path.
+  • Visual rotation smoothly follows the curved path.
+
+SCENARIO 7: PATROL AROUND WALLS (A* PATHFINDING)
+  • Enemy is patrolling. Random destination is chosen across the map.
+  • Patrol calls PathFollower.SetDestination(targetCell).
+  • PathFollower calls GridPathfinder.FindPath(currentCell, targetCell).
+  • A* computes the shortest walkable route around any walls.
+  • The path is stored as a list of grid cells.
+  • Each tick, PathFollower advances the waypointTarget to the next node.
+  • EnemyLocomotion steers toward each node in sequence.
+  • The enemy smoothly navigates corridors and doorways.
+  • When the final node is reached, a new destination is picked.
+  • Gizmo shows the entire path as connected cyan line segments.
+
+SCENARIO 8: INVESTIGATION WITH PATHFINDING
+  • Player escapes behind a wall. Last known position recorded.
+  • SearchArea picks a random cell within searchRadius of last known pos.
+  • PathFollower computes A* route from enemy to that cell.
+  • Enemy follows the path around walls to reach the search area.
+  • On arrival, a new nearby cell is picked and a new path computed.
+  • Continues for searchDuration seconds.
+  • Gizmo shows gold path segments and search radius circle.
+
+INVESTIGATION FLOW IN DETAIL
+  1. Chase breaks ? Last known position recorded.
+  2. Investigate sequence ticks:
+     a. Check "has last known location?" ? Success
+     b. SearchArea.SetSearchCentre(lastPos) is called
+     c. SearchArea ticks, picks random nearby walkable cells
+     d. Locomotion steers toward current waypoint
+     e. On arrival or timeout, new waypoint nearby is chosen
+     f. Timer counts up toward searchDuration
+  3. If player re-enters range + LOS before timer expires:
+     a. Engage pre-empts via reactive selector
+     b. Investigate is never ticked again that frame
+     c. Chase resumes, last known location updated
+  4. If timer expires without contact:
+     a. SearchArea.Tick() returns Success
+     b. Investigate sequence fails
+     c. Patrol takes over (root selector fallback)
+
+REACTIVE TREE ADVANTAGE
+  Unlike non-reactive (resumable) BTs, this system always re-evaluates
+  from the root every frame. This means:
+
+  • Conditions are always rechecked
+    If the player was out of range and moves in, the chase branch is
+    immediately tried (not skipped because patrol was "running").
+
+  • Priorities are enforced every frame
+    Higher branches can interrupt lower ones without explicit signalling.
+
+  • No frame lag on state transitions
+    As soon as a condition changes, the tree responds (next frame).
+
+  Trade-off: Slightly more expensive per frame (all branches re-evaluated),
+  but the code is simpler and AI feels more responsive.
+
+================================================================================
+  END OF DOCUMENTATION
+================================================================================

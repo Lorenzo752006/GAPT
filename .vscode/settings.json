@@ -67,5 +67,8 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "GAPT.slnx"
+    "dotnet.defaultSolution": "GAPT.slnx",
+    "chat.tools.terminal.autoApprove": {
+        "Set-Content": true
+    }
 }

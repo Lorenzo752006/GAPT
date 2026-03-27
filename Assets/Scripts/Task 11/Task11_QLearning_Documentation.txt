@@ -1,0 +1,309 @@
+﻿================================================================================
+  TASK 11 - REINFORCEMENT LEARNING (Q-LEARNING) AI SYSTEM
+  Documentation
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  1. Overview
+  2. What is Reinforcement Learning?
+  3. Architecture & File Map
+  4. Core Components
+     4.1 QTable
+     4.2 QLearningAgent
+     4.3 QLearningTrainer
+     4.4 QLearningEnemyController
+  5. The Q-Learning Algorithm
+  6. Training Process
+  7. Runtime Behaviour
+  8. Debug Visualization
+  9. Setup Guide
+  10. Tuning Guide
+  11. How It All Connects
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+This system implements a reinforcement learning algorithm built entirely from
+scratch. The AI learns to navigate the dungeon purely through trial and error -
+no hardcoded pathfinding, no behaviour trees, no hand-crafted rules.
+
+The agent's knowledge is stored in a Q-Table: a massive spreadsheet where:
+  - Rows represent WHERE the agent is on the map (every grid cell = one row)
+  - Columns represent the ACTIONS it can take (Up, Down, Left, Right)
+  - Each cell stores a Q-value: the expected future reward of that action
+
+The system trains by running thousands of fast simulated episodes where a
+virtual agent explores the map, receiving:
+  - Positive rewards for reaching the goal (player position)
+  - Negative rewards (punishments) for hitting walls
+  - Small step penalties to encourage efficient paths
+
+After training, the Q-Table contains learned navigation knowledge that any
+enemy can consult at runtime. The enemy simply looks up its current grid cell
+in the table, picks the action with the highest Q-value, and moves that way.
+
+Key features:
+  - Q-Table built from scratch (no ML libraries)
+  - Bellman equation updates propagate reward knowledge backwards
+  - Epsilon-greedy exploration with decay
+  - Fast headless training (thousands of episodes in one frame)
+  - Automatic retraining when the player moves
+  - Integration with existing physics-based steering
+  - Full debug visualization (Q-value heatmap + direction arrows)
+  - Route Extraction: Translates Q-Table values into a clean smoothed path.
+
+================================================================================
+2. WHAT IS REINFORCEMENT LEARNING?
+================================================================================
+
+Reinforcement Learning (RL) is a type of machine learning where an agent
+learns by interacting with an environment. Unlike supervised learning (where
+you provide correct answers), RL works through trial and error:
+
+  1. The agent observes its STATE (where it is).
+  2. It takes an ACTION (moves in a direction).
+  3. The environment gives a REWARD (positive or negative).
+  4. The agent updates its knowledge to do better next time.
+
+Over thousands of episodes, the agent discovers which actions lead to the
+highest cumulative reward. It learns optimal paths, avoids dead ends, and
+navigates around obstacles - all without being explicitly told how.
+
+Q-LEARNING is a specific RL algorithm that stores all its knowledge in a
+table (the Q-Table). Each entry Q(s,a) represents:
+
+  "How good is it to take action 'a' when I'm in state 's'?"
+
+The "Q" stands for "quality" - the quality of an action in a given state.
+
+THE EXPLORATION-EXPLOITATION DILEMMA:
+  - Exploration: Try random actions to discover new paths.
+  - Exploitation: Use known good actions to maximize reward.
+  
+  The agent starts with high exploration (mostly random) and gradually
+  shifts to exploitation (mostly using learned knowledge). This is
+  controlled by the epsilon parameter in epsilon-greedy action selection.
+
+================================================================================
+3. ARCHITECTURE & FILE MAP
+================================================================================
+
+All files are in: Assets/Scripts/Task 11/RL/
+
+  RL/
+      QTable.cs                     The data structure (states x actions)
+      QLearningAgent.cs             Core algorithm (explore, learn, update)
+      QLearningTrainer.cs           MonoBehaviour: runs training episodes
+      QLearningEnemyController.cs   MonoBehaviour: uses trained Q-Table at runtime
+
+  Supporting files (shared with other tasks):
+      Assets/Scripts/Grid/GridManager.cs           The logical grid
+      Assets/Scripts/Enemy/EnemyLocomotionTask6.cs  Physics-based steering
+      Assets/Scripts/Player/GridPlayerControllerTask6.cs  Player movement
+
+================================================================================
+4. CORE COMPONENTS
+================================================================================
+
+4.1 QTable
+----------
+  File: QTable.cs
+
+  The fundamental data structure. A 2D array where:
+    - Rows = every grid cell (width x height total states)
+    - Columns = 4 actions (Up, Down, Left, Right)
+    - Values = Q-values (float, start at 0, updated during training)
+
+  State encoding:
+    state index = y * gridWidth + x
+    This flattens the 2D grid into a 1D row index.
+
+  Key methods:
+    - PositionToState(x, y)      -> flat state index
+    - StateToPosition(state)     -> Vector2Int grid position
+    - GetQ(state, action)        -> Q-value for that cell
+    - SetQ(state, action, value) -> Update a Q-value
+    - GetBestAction(state)       -> Action with highest Q-value
+    - GetMaxQ(state)             -> Highest Q-value (for Bellman equation)
+    - ActionToDirection(action)  -> Vector2Int movement direction
+    - Reset()                    -> Zero all values (for retraining)
+
+4.2 QLearningAgent
+------------------
+  File: QLearningAgent.cs
+
+  The core learning algorithm. This class:
+    1. Holds a QTable and a snapshot of the grid layout.
+    2. Tracks the agent's current position during simulation.
+    3. Implements epsilon-greedy action selection.
+    4. Executes the Bellman equation to update Q-values.
+    5. Runs complete training episodes.
+
+  Constructor parameters:
+    - grid, width, height        - Grid layout for collision checking
+    - learningRate               - How fast new info overrides old
+    - discountFactor             - How much future rewards matter
+    - explorationRate            - Starting exploration probability
+    - rewardGoal (+1000)         - Reward for reaching the goal
+    - penaltyWall (-15)          - Punishment for hitting a wall
+    - penaltyStep (-1)           - Small penalty per step (efficiency)
+
+4.3 QLearningTrainer
+--------------------
+  File: QLearningTrainer.cs
+  Component: Attach to any GameObject in the scene.
+
+  MonoBehaviour that orchestrates training. On Start(), it:
+    1. Creates a QLearningAgent with the GridManager's grid.
+    2. Sets the goal to the target location.
+    3. Runs thousands of training episodes in a single frame.
+    4. Automatically fires an OnRetrainingComplete event when done.
+
+  Retraining:
+    If retrainOnGoalChange is enabled, the trainer periodically checks
+    if the player has moved. If so, it updates the goal and retrains.
+
+  Inspector fields:
+    - player                  Target transform (goal source)
+    - usePlayerPositionAsGoal Track the player's position
+    - Retraining variables    (episodes, rates, goal logic)
+    - TestRandomGoalSpawn     Testing toggle to endlessly spawn new goals!
+
+4.4 QLearningEnemyController
+----------------------------
+  File: QLearningEnemyController.cs
+  Component: Attach to an enemy with EnemyLocomotionTask6.
+
+  MonoBehaviour that routes the underlying QTable structure into real
+  engine translation/movement:
+    1. Once the trainer finishes and fires OnRetrainingComplete, this controller
+       extracts the ENTIRE optimal path to the goal by following the best Q-values.
+    2. It smooths the path by compiling only the required corner waypoints.
+    3. It feeds these waypoints sequentially to EnemyLocomotionTask6.
+    4. Automatically halts if the trainer begins a retraining cycle.
+
+  Inspector fields:
+    - waypointTolerance      Distance to consider waypoint reached
+    - showGizmos             Enable debug visualization
+
+================================================================================
+5. THE Q-LEARNING ALGORITHM
+================================================================================
+
+THE BELLMAN EQUATION:
+
+  Q(s,a) = Q(s,a) + Alpha * [R + Gamma * max(Q(s',a')) - Q(s,a)]
+
+  Where:
+    Q(s,a)           = Current Q-value for state s, action a
+    Alpha            = Learning rate (0.2)
+    R                = Immediate reward received
+    Gamma            = Discount factor (0.95)
+    max Q(s',a')     = Best Q-value available from the next state
+    s'               = The state we land in after taking action a
+
+EPSILON-GREEDY ACTION SELECTION:
+  With probability Epsilon: take a RANDOM action (exploration)
+  With probability 1-Epsilon: take the BEST known action (exploitation)
+
+================================================================================
+6. TRAINING PROCESS
+================================================================================
+
+Training runs entirely in-memory with no visual representation:
+  FOR each episode:
+    1. Place agent at a random walkable cell.
+    2. Step until max limit or goal reached.
+    3. Update Q-values and decay epsilon.
+
+================================================================================
+7. RUNTIME BEHAVIOUR
+================================================================================
+
+After training completes, the QLearningEnemyController extracts its path:
+
+  ON PATH EXTRACTION (When Training Completes):
+    1. Start at the enemy's current grid cell.
+    2. Loop: Lookup Q-Table row for that state, find best action, move virtually.
+    3. Build a raw path of valid waypoints spanning step-by-step to the goal.
+    4. Smooth the path by keeping only corner-connected waypoints.
+
+  EVERY FRAME (During Navigation):
+    1. Check distance to current waypoint.
+    2. If reached (within waypointTolerance), move to next waypoint.
+    3. If there are no more waypoints and testRandomGoalSpawn is enabled,
+       spawn a new random goal for continuous agent testing.
+
+  RETRAINING & TESTING:
+    - When the goal moves, the trainer resets the Q-Table and retrains.
+    - The Controller detects pending/active retraining, halts movement,
+      and drops its old path.
+    - Once training completes, the Controller extracts the newly optimized path.
+
+================================================================================
+8. DEBUG VISUALIZATION
+================================================================================
+
+  QLearningTrainer gizmos (select the Trainer GameObject):
+    - Q-Value Heatmap (Walkable cells drawn with Q-Value intensity)
+    - Direction Arrows (Yellow arrows pointing in highest Q-value block)
+    - Goal Marker (Crosshair showing active extraction destination)
+
+  QLearningEnemyController gizmos (select the Enemy GameObject):
+    - Full Path Line (Cyan line linking all the corner waypoints in extracted path)
+    - Waypoint Target (Green wire sphere highlighting active destination)
+
+  Inspector (during Play mode):
+    QLearningTrainer:
+      - trainingStatus:          "Not Started", "Training...", "Complete"
+      - episodesCompleted:       Visual debug for progress
+      - TestRandomGoalSpawn:     Toggle this explicitly for automatic testing
+
+    QLearningEnemyController:
+      - currentWaypointIndex:    Index of the active waypoint being steered to
+      - pathExtracted:           Flag for ensuring route integrity
+
+================================================================================
+9. SETUP GUIDE
+================================================================================
+
+  1. Add a GridManager to the scene to render the logical map.
+  2. Create an empty GameObject "QLearningTrainer" with QLearningTrainer.cs.
+  3. Set userPlayerPositionAsGoal = true and assign the player transform.
+  4. Create an enemy with Rigidbody2D, EnemyLocomotionTask6, and QLearningEnemyController.
+  5. Check "Test Random Goal Spawn" on the Trainer to automate end-to-end loop testing.
+
+================================================================================
+10. TUNING GUIDE
+================================================================================
+
+  TRAINING EPISODES: More episodes = better convergence, slower frame block.
+  LEARNING RATE: Controls how fast new information replaces old (default 0.2).
+  DISCOUNT FACTOR: How much future rewards matter (horizon range, default 0.95).
+  EXPLORATION DECAY: High = shrinks epsilon fast; Low = longer random phases.
+  REWARDS & PENALTIES: Big goal reward (+1000), noticeable wall penalty (-15).
+
+================================================================================
+11. HOW IT ALL CONNECTS
+================================================================================
+
+  GAME STARTUP:
+    1. GridManager maps the walkable floor logical mesh.
+    2. QLearningTrainer.Start() initializes QLearningAgent with map.
+    3. Trainer runs thousands of iterations.
+    4. Q-Table yields dense mapped network.
+
+  EVERY FRAME (RUNTIME):
+    1. QLearningTrainer.Update() conditionally checks testing bounds or goal adjustments.
+    2. QLearningEnemyController routes directly to pre-calculated QTable waypoint array.
+    3. EnemyLocomotion steers.
+
+  COMPARISON WITH TASK 5 (BEHAVIOUR TREE):
+    Task 5 BT: Hand-authored explicit machine, A* computes active routes block-by-block.
+    Task 11 Q-Learning: Policy determines routes structurally by propagating mapped rewards.
+
+================================================================================
+  END OF DOCUMENTATION
+================================================================================
