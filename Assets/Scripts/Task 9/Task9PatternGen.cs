@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Task9;
 
 public class Task9PatternGen : RoomFirstDungeonGenerator
 {
@@ -21,7 +22,10 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
     private Dictionary<bool, List<bool>> verticalRules = new Dictionary<bool, List<bool>>(); 
     private Dictionary<bool, List<bool>> diagonalRules = new Dictionary<bool, List<bool>>(); 
 
-
+    private void Start()
+    {
+        runProceduralGeneration();
+    }
 
 
     protected override void runProceduralGeneration()
@@ -44,6 +48,37 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
         tileMapVisualizer.paintFloorTiles(finalMap);
         WallGenerator.createWalls(finalMap, tileMapVisualizer);
 
+        // Sync with your new Grid Manager
+        if (GridManagerTask9.Instance != null)
+        {
+            // We pass the finalMap and the startPosition so the grid coordinates align
+            GridManagerTask9.Instance.InitializeFromTilemap(finalMap);
+            
+            Debug.Log("GridManagerTask9 updated with new procedural map data.");
+        }
+
+        // Move the player to a valid starting position on the new map
+        SpawnPlayerOnFloor(finalMap);
+    
+    }   
+
+
+    private void SpawnPlayerOnFloor(HashSet<Vector2Int> finalMap)
+    {
+        // Get the first available floor tile from our set
+        foreach (var pos in finalMap)
+        {
+            Task9PlayerController player = FindAnyObjectByType<Task9PlayerController>();
+            if (player != null)
+            {
+                // Convert global tile position to the local grid position the Player understands
+                Vector2Int localPos = pos - startPosition;
+                player.SetPosition(localPos);
+                
+                Debug.Log($"Player spawned at local grid position: {localPos}");
+                break; // Exit after moving the player once
+            }
+        }
     }
 
     private void LearnFromTilemap()

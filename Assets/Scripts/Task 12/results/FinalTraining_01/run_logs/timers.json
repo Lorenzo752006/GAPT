@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1776846429",
+        "python_version": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\matth\\AppData\\Local\\Programs\\Python\\Python310\\Scripts\\mlagents-learn config.yaml --run-id=FinalTraining_01 --force",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.7.0+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1776846493"
+    },
+    "total": 64.10067509999499,
+    "count": 1,
+    "self": 0.02132320002419874,
+    "children": {
+        "run_training.setup": {
+            "total": 0.239915199985262,
+            "count": 1,
+            "self": 0.239915199985262
+        },
+        "TrainerController.start_learning": {
+            "total": 63.83943669998553,
+            "count": 1,
+            "self": 0.00016419991152361035,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 63.83922760002315,
+                    "count": 1,
+                    "self": 63.83922760002315
+                },
+                "TrainerController._save_models": {
+                    "total": 4.490005085244775e-05,
+                    "count": 1,
+                    "self": 4.490005085244775e-05
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "EnemyTracker": {
+        "checkpoints": [
+            {
+                "steps": 188622,
+                "file_path": "results\\Task12_FinalAttempt\\EnemyTracker\\EnemyTracker-188622.onnx",
+                "reward": 0.9565034785192885,
+                "creation_time": 1776851591.7649045,
+                "auxillary_file_paths": [
+                    "results\\Task12_FinalAttempt\\EnemyTracker\\EnemyTracker-188622.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 188622,
+            "file_path": "results\\Task12_FinalAttempt\\EnemyTracker.onnx",
+            "reward": 0.9565034785192885,
+            "creation_time": 1776851591.7649045,
+            "auxillary_file_paths": [
+                "results\\Task12_FinalAttempt\\EnemyTracker\\EnemyTracker-188622.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.7.0+cpu"
+    }
+}
