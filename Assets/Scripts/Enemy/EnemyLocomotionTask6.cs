@@ -1,9 +1,6 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
-// Context-steering locomotion used in Task 6.
-// It samples multiple directions around the enemy, scores them based on
-// interest (toward the target) and danger (walls), then steers physically.
 public class EnemyLocomotionTask6 : MonoBehaviour
 {
     private Rigidbody2D rb;
@@ -40,24 +37,20 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
     void Awake()
     {
-        BuildRayDirections();
-    }
-
-    void Start()
-    {
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
         baseMaxSpeed = maxSpeed;
         baseStopDistance = stopDistance;
+
+        BuildRayDirections();
     }
 
     void FixedUpdate()
     {
         if (target == null)
         {
-            // If no target is assigned, gradually brake to a stop.
             if (rb.linearVelocity.magnitude > 0.01f)
             {
                 rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, Vector2.zero, Time.fixedDeltaTime * brakeStrength);
@@ -71,12 +64,10 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
         Vector2 desiredVelocity = GetContextVelocity(target.position);
 
-        // Steering = desired velocity minus current velocity.
         Vector2 steering = desiredVelocity - rb.linearVelocity;
         steering = Vector2.ClampMagnitude(steering, maxSteeringForce);
         rb.AddForce(steering * acceleration, ForceMode2D.Force);
 
-        // Remove sideways drift so movement feels tighter.
         Vector2 right = transform.right;
         float drift = Vector2.Dot(rb.linearVelocity, right);
         rb.AddForce(-right * drift * gripStrength, ForceMode2D.Force);
@@ -147,7 +138,6 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
             float interest = Mathf.Max(0f, Vector2.Dot(dir, targetDir));
 
-            // CircleCast checks whether moving in this direction would hit a wall.
             Vector2 castOrigin = (Vector2)transform.position + dir * 0.1f;
             RaycastHit2D hit = Physics2D.CircleCast(castOrigin, agentRadius, dir, detectionRange, wallLayer);
 
@@ -161,7 +151,6 @@ public class EnemyLocomotionTask6 : MonoBehaviour
 
             dangerMap[i] = danger;
 
-            // Small bias toward continuing the current movement direction.
             float velocityBias = velocityDir.sqrMagnitude > 0.0001f
                 ? Mathf.Max(0f, Vector2.Dot(dir, velocityDir)) * 0.15f
                 : 0f;
@@ -194,7 +183,6 @@ public class EnemyLocomotionTask6 : MonoBehaviour
                 bestDanger = Mathf.Max(bestDanger, dangerMap[i]);
         }
 
-        // Arrival reduces speed near the target unless we are fleeing.
         float arrival = flee ? 1f : Mathf.Pow(Mathf.Clamp01(distance / stopDistance), arrivalSharpness);
         float braking = Mathf.Clamp01(1f - bestDanger);
 
