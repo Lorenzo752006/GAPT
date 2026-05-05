@@ -19,7 +19,7 @@ public class GridManager : MonoBehaviour
     [SerializeField] private GameObject floorPrefab;
     [SerializeField] private GameObject wallPrefab;
 
-    private CellType[,] grid;
+    public CellType[,] grid;
 
     public int Width => width;
     public int Height => height;
