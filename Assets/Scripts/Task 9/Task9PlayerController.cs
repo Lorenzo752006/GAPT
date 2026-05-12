@@ -8,34 +8,50 @@ public class Task9PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 12f; 
     [SerializeField] private float moveCooldown = 0.1f;
 
+    [Header("Training (Random Walk)")]
+    [SerializeField] private bool isRandomWalk = false; 
+    [SerializeField] private float randomMoveInterval = 1.0f; // Seconds between random moves
+    
     private Vector2Int gridPosition;
     private Vector3 targetWorldPosition;
     private bool isMoving;
     private float cooldownTimer;
+    private float randomWalkTimer; // Tracks time for the next random move
+    private bool isInitialized = false;
 
     private void Start()
     {
-        // Start at origin; Generator will move us later
-        SetPosition(Vector2Int.zero);
+        targetWorldPosition = transform.position;
     }
 
-    /// <summary>
-    /// Moves the player to a specific grid coordinate and snaps their world position.
-    /// </summary>
     public void SetPosition(Vector2Int newGridPos)
     {
-        gridPosition = newGridPos;
         if (GridManagerTask9.Instance != null)
         {
-            targetWorldPosition = GridManagerTask9.Instance.GridToWorld(gridPosition.x, gridPosition.y);
+            gridPosition = newGridPos;
+            targetWorldPosition = GridManagerTask9.Instance.GridToWorld(newGridPos.x, newGridPos.y);
             transform.position = targetWorldPosition;
+            
             isMoving = false;
+            cooldownTimer = 0f; 
+            randomWalkTimer = 0f; // Reset timer on new episode
+            isInitialized = true; 
         }
     }
 
     private void Update()
     {
-        HandleInput();
+        if (!isInitialized) return;
+
+        if (isRandomWalk)
+        {
+            HandleRandomWalk();
+        }
+        else
+        {
+            HandleInput();
+        }
+
         SmoothMove();
     }
 
@@ -50,6 +66,31 @@ public class Task9PlayerController : MonoBehaviour
         if (direction != Vector2Int.zero)
         {
             TryMove(direction);
+        }
+    }
+
+    private void HandleRandomWalk()
+    {
+        if (isMoving) return;
+
+        randomWalkTimer += Time.deltaTime;
+
+        if (randomWalkTimer >= randomMoveInterval)
+        {
+            randomWalkTimer = 0f;
+            
+            // Pick a random direction: Up, Down, Left, Right
+            Vector2Int[] directions = { 
+                Vector2Int.up, 
+                Vector2Int.down, 
+                Vector2Int.left, 
+                Vector2Int.right 
+            };
+            
+            Vector2Int chosenDir = directions[Random.Range(0, directions.Length)];
+            
+            // TryMove already checks if the tile is walkable!
+            TryMove(chosenDir);
         }
     }
 
@@ -79,9 +120,9 @@ public class Task9PlayerController : MonoBehaviour
     private void SmoothMove()
     {
         if (!isMoving) return;
-
+        
         transform.position = Vector3.MoveTowards(transform.position, targetWorldPosition, moveSpeed * Time.deltaTime);
-
+        
         if (Vector3.Distance(transform.position, targetWorldPosition) < 0.001f)
         {
             transform.position = targetWorldPosition;

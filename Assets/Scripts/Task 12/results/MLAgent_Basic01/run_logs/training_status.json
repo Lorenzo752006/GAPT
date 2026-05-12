@@ -1,0 +1,47 @@
+{
+    "EnemyTracker": {
+        "checkpoints": [
+            {
+                "steps": 499983,
+                "file_path": "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-499983.onnx",
+                "reward": 23.40379704475403,
+                "creation_time": 1778067344.9198034,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-499983.pt"
+                ]
+            },
+            {
+                "steps": 999877,
+                "file_path": "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-999877.onnx",
+                "reward": 23.968425273895264,
+                "creation_time": 1778073128.0175128,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-999877.pt"
+                ]
+            },
+            {
+                "steps": 1000042,
+                "file_path": "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-1000042.onnx",
+                "reward": 24.837352343967982,
+                "creation_time": 1778073128.12483,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-1000042.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 1000042,
+            "file_path": "results\\MLAgent_Basic01\\EnemyTracker.onnx",
+            "reward": 24.837352343967982,
+            "creation_time": 1778073128.12483,
+            "auxillary_file_paths": [
+                "results\\MLAgent_Basic01\\EnemyTracker\\EnemyTracker-1000042.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.7.0+cpu"
+    }
+}

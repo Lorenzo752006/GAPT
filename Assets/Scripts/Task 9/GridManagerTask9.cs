@@ -58,6 +58,8 @@ namespace Task9
 
         public Vector2Int WorldToGrid(Vector3 worldPos)
         {
+            if (floorTilemap == null) return Vector2Int.zero; 
+            
             Vector3Int cellPos = floorTilemap.WorldToCell(worldPos);
             return new Vector2Int(cellPos.x, cellPos.y);
         }

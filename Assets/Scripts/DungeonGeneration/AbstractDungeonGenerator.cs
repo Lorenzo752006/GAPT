@@ -7,7 +7,7 @@ public abstract class AbstarctDungeonGenerator : MonoBehaviour
     [SerializeField] protected TileMapVisualizer tileMapVisualizer = null;
     [SerializeField] protected Vector2Int startPosition = Vector2Int.zero;
     
-    public void generateDungeon()
+    public virtual void generateDungeon()
     {
         tileMapVisualizer.Clear();
         runProceduralGeneration();
