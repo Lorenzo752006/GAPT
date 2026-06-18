@@ -766,10 +766,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 476b00d4fdc4f034da7faa95a3fc9fa6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Task16Manager
-  simulationsPerTurn: 1000
-  maxSimulationDepth: 10
-  moveSpeed: 5
-  moveCooldown: 0.3
+  aiMode: 0
+  basicBossObject: {fileID: 1069612393}
+  complexBossObject: {fileID: 1655490678}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -16,7 +16,6 @@ public class BasicBoss : MonoBehaviour
         int spawnY = GridManager.Instance.Height - 2;
 
         gridPosition = new Vector2Int(spawnX, spawnY);
-    
         targetWorldPosition = GridManager.Instance.GridToWorld(spawnX, spawnY);
         transform.position = targetWorldPosition;
 
@@ -25,6 +24,9 @@ public class BasicBoss : MonoBehaviour
 
     private void Update()
     {
+        if (player == null) player = FindFirstObjectByType<GridPlayerController>();
+        if (player == null) return;
+
         if (isMoving) { SmoothMove(); return; }
 
         Vector2Int playerGrid = player.GetGridPosition();
@@ -33,7 +35,6 @@ public class BasicBoss : MonoBehaviour
         int deltaX = playerGrid.x - gridPosition.x;
         int deltaY = playerGrid.y - gridPosition.y;
 
-        // Naive greedy choice: step along the axis with the largest distance
         if (Mathf.Abs(deltaX) >= Mathf.Abs(deltaY) && deltaX != 0)
         {
             direction.x = deltaX > 0 ? 1 : -1;
@@ -45,7 +46,6 @@ public class BasicBoss : MonoBehaviour
 
         Vector2Int targetGrid = gridPosition + direction;
 
-        // Basic check: Only move if it's not a wall. If it is a wall, it stops (trapped)
         if (GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
         {
             gridPosition = targetGrid;
@@ -64,7 +64,8 @@ public class BasicBoss : MonoBehaviour
         }
     }
 
-    public Vector2Int GetGridPosition() { 
+    public Vector2Int GetGridPosition()
+    {
         return gridPosition;
     }
 
@@ -72,6 +73,7 @@ public class BasicBoss : MonoBehaviour
     {
         gridPosition = newGridPos;
         targetWorldPosition = newWorldPos;
-        isMoving = false;
+        transform.position = newWorldPos;
+        isMoving = false; 
     }
 }

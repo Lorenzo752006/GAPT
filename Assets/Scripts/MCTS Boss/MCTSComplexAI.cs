@@ -4,8 +4,8 @@ using System.Collections.Generic;
 public class MCTSComplexAI : MonoBehaviour
 {
     [Header("MCTS Settings")]
-    [SerializeField] private int simulationsPerTurn = 1000; // How many "futures" to imagine
-    [SerializeField] private int maxSimulationDepth = 10;   // How far into the future to look
+    [SerializeField] private int simulationsPerTurn = 1000; 
+    [SerializeField] private int maxSimulationDepth = 10;   
     [SerializeField] private float moveSpeed = 5f;
 
     [Header("References")]
@@ -22,7 +22,6 @@ public class MCTSComplexAI : MonoBehaviour
         int spawnY = GridManager.Instance.Height - 2;
 
         gridPosition = new Vector2Int(spawnX, spawnY);
-    
         targetWorldPosition = GridManager.Instance.GridToWorld(spawnX, spawnY);
         transform.position = targetWorldPosition;
 
@@ -31,13 +30,15 @@ public class MCTSComplexAI : MonoBehaviour
 
     private void Update()
     {
+        if (player == null) player = FindFirstObjectByType<GridPlayerController>();
+        if (player == null) return;
+
         if (isMoving)
         {
             SmoothMove();
         }
         else
         {
-            // Execute the MCTS decision loop
             Vector2Int bestMove = RunMCTS();
             ExecuteMove(bestMove);
         }
@@ -45,42 +46,32 @@ public class MCTSComplexAI : MonoBehaviour
 
     private Vector2Int RunMCTS()
     {
-        Vector2Int[] possibleMoves = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right, Vector2Int.zero };
+        Vector2Int[] possibleMoves = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
         Dictionary<Vector2Int, float> moveScores = new Dictionary<Vector2Int, float>();
+        
+        Vector2Int bestAction = Vector2Int.zero;
+        float highestScore = float.NegativeInfinity;
 
         foreach (var move in possibleMoves)
         {
-            moveScores[move] = 0;
-            
-            // Check if move is valid in the real world
             Vector2Int testPos = gridPosition + move;
-            if (move != Vector2Int.zero && !GridManager.Instance.IsWalkable(testPos.x, testPos.y))
-                continue;
+            if (!GridManager.Instance.IsWalkable(testPos.x, testPos.y)) continue;
 
-            // Run thousands of simulations for this specific starting move
+            moveScores[move] = 0;
             for (int i = 0; i < simulationsPerTurn; i++)
             {
                 moveScores[move] += SimulatePlayout(testPos);
             }
-        }
 
-        // Find the move with the highest average win ratio/score
-        Vector2Int bestAction = Vector2Int.zero;
-        float highestScore = float.NegativeInfinity;
-
-        foreach (var score in moveScores)
-        {
-            if (score.Value > highestScore)
+            if (moveScores[move] > highestScore)
             {
-                highestScore = score.Value;
-                bestAction = score.Key;
+                highestScore = moveScores[move];
+                bestAction = move;
             }
         }
-
         return bestAction;
     }
 
-    // "Imagine" the future without affecting the real world
     private float SimulatePlayout(Vector2Int startingPos)
     {
         Vector2Int simulatedBossPos = startingPos;
@@ -88,16 +79,12 @@ public class MCTSComplexAI : MonoBehaviour
 
         for (int depth = 0; depth < maxSimulationDepth; depth++)
         {
-            // Simple Win/Loss condition for simulation: Did we catch the player?
             if (simulatedBossPos == simulatedPlayerPos) return 1.0f;
-
-            // Randomly move the "imaginary" boss
             simulatedBossPos = GetRandomValidMove(simulatedBossPos);
         }
 
-        // If time ran out, score based on proximity (Heuristic)
         float dist = Vector2Int.Distance(simulatedBossPos, simulatedPlayerPos);
-        return 1.0f / (dist + 1.0f); 
+        return 1.0f / (dist + 1.0f);
     }
 
     private Vector2Int GetRandomValidMove(Vector2Int currentPos)
@@ -105,14 +92,12 @@ public class MCTSComplexAI : MonoBehaviour
         Vector2Int[] dirs = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
         Vector2Int dir = dirs[Random.Range(0, dirs.Length)];
         Vector2Int target = currentPos + dir;
-
         return GridManager.Instance.IsWalkable(target.x, target.y) ? target : currentPos;
     }
 
     private void ExecuteMove(Vector2Int direction)
     {
         if (direction == Vector2Int.zero) return;
-        
         gridPosition += direction;
         targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
         isMoving = true;
@@ -128,14 +113,16 @@ public class MCTSComplexAI : MonoBehaviour
         }
     }
 
-    public Vector2Int GetGridPosition() { 
-        return gridPosition;
+    public Vector2Int GetGridPosition() 
+    { 
+        return gridPosition; 
     }
 
     public void SyncPosition(Vector2Int newGridPos, Vector3 newWorldPos)
     {
         gridPosition = newGridPos;
         targetWorldPosition = newWorldPos;
+        transform.position = newWorldPos;
         isMoving = false;
     }
 }

@@ -15,6 +15,11 @@ using UnityEngine.InputSystem;
 
 public class MASAgentAI : Agent
 {
+    // --- MODE SWITCHER ---
+    public enum ComplexityMode { Basic, Complex }
+    [Header("Agent Settings")]
+    public ComplexityMode agentMode = ComplexityMode.Complex;
+
     [SerializeField] private GridManager gridManager;
     [SerializeField] private Transform opponent;
     private Vector2Int gridPosition;
@@ -33,8 +38,18 @@ public class MASAgentAI : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
+        // Basic observations (Absolute Positions)
         sensor.AddObservation(transform.localPosition);
         sensor.AddObservation(opponent.localPosition);
+
+        // --- COMPLEX ADDITIONS ---
+        if (agentMode == ComplexityMode.Complex)
+        {
+            // Provide relative heading vector to opponent (makes pathing much easier to learn)
+            Vector3 heading = opponent.localPosition - transform.localPosition;
+            sensor.AddObservation(heading.normalized);
+            sensor.AddObservation(heading.magnitude);
+        }
     }
 
     public override void OnActionReceived(ActionBuffers actions)
@@ -52,24 +67,41 @@ public class MASAgentAI : Agent
         }
 
         Vector2Int targetGrid = gridPosition + direction;
+        float distanceBeforeMove = Vector3.Distance(transform.localPosition, opponent.localPosition);
 
         if (gridManager.IsWalkable(targetGrid.x, targetGrid.y))
         {
             gridPosition = targetGrid;
             transform.localPosition = gridManager.GridToWorld(gridPosition.x, gridPosition.y);
-            AddReward(0.01f); // Encourage valid movement
+            
+            // --- BASIC VS COMPLEX REWARD MODIFIERS ---
+            if (agentMode == ComplexityMode.Complex)
+            {
+                float distanceAfterMove = Vector3.Distance(transform.localPosition, opponent.localPosition);
+                // Complex mode rewards getting actively closer to the enemy, not just moving randomly
+                if (distanceAfterMove < distanceBeforeMove) {
+                    AddReward(0.05f); 
+                } else {
+                    AddReward(-0.02f); // Penalize moving away
+                }
+            }
+            else
+            {
+                AddReward(0.01f); // Basic mode: just encourage valid movement
+            }
         }
         else
         {
-            AddReward(-0.01f); // Discourage wall collisions
+            // Penalize wall hits harder in complex mode to force tight navigation
+            AddReward(agentMode == ComplexityMode.Complex ? -0.05f : -0.01f);
         }
 
         // Win Condition
         if (gridPosition == new Vector2Int((int)opponent.localPosition.x, (int)opponent.localPosition.y))
         {
             Debug.Log("Win Confirmed");
-            AddReward(1.0f); // Opponent found
-            EndEpisode();    // Reset the round
+            AddReward(1.0f); 
+            EndEpisode();    
         }
 
         // Standstill Prevention
@@ -79,17 +111,9 @@ public class MASAgentAI : Agent
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var discreteActionsOut = actionsOut.DiscreteActions;
-        if (Keyboard.current.wKey.isPressed) {
-            discreteActionsOut[0] = 1;
-        }
-        else if (Keyboard.current.sKey.isPressed) {
-            discreteActionsOut[0] = 2;
-        }
-        else if (Keyboard.current.aKey.isPressed) {
-            discreteActionsOut[0] = 3;
-        }
-        else if (Keyboard.current.dKey.isPressed) {
-            discreteActionsOut[0] = 4;
-        }
+        if (Keyboard.current.wKey.isPressed) discreteActionsOut[0] = 1;
+        else if (Keyboard.current.sKey.isPressed) discreteActionsOut[0] = 2;
+        else if (Keyboard.current.aKey.isPressed) discreteActionsOut[0] = 3;
+        else if (Keyboard.current.dKey.isPressed) discreteActionsOut[0] = 4;
     }
 }

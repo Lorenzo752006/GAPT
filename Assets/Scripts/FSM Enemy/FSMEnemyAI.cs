@@ -1,8 +1,11 @@
 using UnityEngine;
 
-public class BasicEnemyFSM : MonoBehaviour
+public class EnemyFSM : MonoBehaviour
 {
     public enum SimpleState { Wander, Chase, Attack, Flee }
+    public enum ComplexityMode { Basic, Complex }
+    [Header("AI Settings")]
+    public ComplexityMode aiMode = ComplexityMode.Complex;
     public SimpleState currentState = SimpleState.Wander;
     
     private bool isMoving = false;
@@ -10,7 +13,7 @@ public class BasicEnemyFSM : MonoBehaviour
 
     [Header("Stats")]
     [SerializeField] private float health = 100f;
-    [SerializeField] private float fleeThreshold = 25f; // Flee if health < 25
+    [SerializeField] private float fleeThreshold = 25f; 
     [SerializeField] private float chaseRange = 5f;
     [SerializeField] private float attackRange = 1.2f;
 
@@ -43,8 +46,8 @@ public class BasicEnemyFSM : MonoBehaviour
         if (health < fleeThreshold && distance < chaseRange) 
         {
             currentState = SimpleState.Flee;
-            HandleGridMove(true); // Move Away
-            Debug.Log("Fleeing Started");
+            HandleGridMove(true); 
+            Debug.Log($"Fleeing Started ({aiMode} Mode)");
         }
         else if (distance < attackRange) 
         {
@@ -54,8 +57,8 @@ public class BasicEnemyFSM : MonoBehaviour
         else if (distance < chaseRange) 
         {
             currentState = SimpleState.Chase;
-            HandleGridMove(false); // Move Toward
-            Debug.Log("Chasing Started");
+            HandleGridMove(false); 
+            Debug.Log($"Chasing Started ({aiMode} Mode)");
         } 
         else 
         {
@@ -70,32 +73,46 @@ public class BasicEnemyFSM : MonoBehaviour
         Vector2Int playerGridPos = GridManager.Instance.WorldToGrid(player.transform.position);
         Vector2Int moveDir = Vector2Int.zero;
 
-        if (away)
+        if (aiMode == ComplexityMode.Basic)
         {
-            // --- FLEE LOGIC ---
-            if (currentGridPos.x <= playerGridPos.x) moveDir.x = -1; // Player is right, move left
-            else moveDir.x = 1;                                      // Player is left, move right
-
-            // If move hits a wall, try Y axis
-            if (!GridManager.Instance.IsWalkable(currentGridPos.x + moveDir.x, currentGridPos.y))
+            if (away)
             {
-                moveDir.x = 0;
-                if (currentGridPos.y <= playerGridPos.y) moveDir.y = -1;
-                else moveDir.y = 1;
+                if (currentGridPos.x <= playerGridPos.x) moveDir.x = -1;
+                else moveDir.x = 1;
+            }
+            else
+            {
+                if (currentGridPos.x < playerGridPos.x) moveDir.x = 1;
+                else if (currentGridPos.x > playerGridPos.x) moveDir.x = -1;
+                else if (currentGridPos.y < playerGridPos.y) moveDir.y = 1;
+                else if (currentGridPos.y > playerGridPos.y) moveDir.y = -1;
             }
         }
         else
         {
-            // --- CHASE LOGIC ---
-            if (currentGridPos.x < playerGridPos.x) moveDir.x = 1;
-            else if (currentGridPos.x > playerGridPos.x) moveDir.x = -1;
-            else if (currentGridPos.y < playerGridPos.y) moveDir.y = 1;
-            else if (currentGridPos.y > playerGridPos.y) moveDir.y = -1;
+            if (away)
+            {
+                if (currentGridPos.x <= playerGridPos.x) moveDir.x = -1; 
+                else moveDir.x = 1;                                      
+
+                if (!GridManager.Instance.IsWalkable(currentGridPos.x + moveDir.x, currentGridPos.y))
+                {
+                    moveDir.x = 0;
+                    if (currentGridPos.y <= playerGridPos.y) moveDir.y = -1;
+                    else moveDir.y = 1;
+                }
+            }
+            else
+            {
+                if (currentGridPos.x < playerGridPos.x) moveDir.x = 1;
+                else if (currentGridPos.x > playerGridPos.x) moveDir.x = -1;
+                else if (currentGridPos.y < playerGridPos.y) moveDir.y = 1;
+                else if (currentGridPos.y > playerGridPos.y) moveDir.y = -1;
+            }
         }
 
         Vector2Int targetGrid = currentGridPos + moveDir;
 
-        // Only move if tile is actually walkable
         if (GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
         {
             targetWorldPos = GridManager.Instance.GridToWorld(targetGrid.x, targetGrid.y);
