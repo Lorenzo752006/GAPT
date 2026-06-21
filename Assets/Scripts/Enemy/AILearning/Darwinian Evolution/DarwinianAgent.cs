@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Agent : MonoBehaviour
+public class DarwinianAgent : MonoBehaviour
 {
     public bool useComplexAI = true;
 

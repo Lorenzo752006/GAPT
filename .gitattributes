@@ -1,2 +1,5 @@
-git lfs track "*.unity" --lockable
-git lfs track "*.prefab" --lockable
+# Git LFS tracking for Unity serialized assets, marked lockable so only one
+# person edits a scene/prefab at a time (avoids unmergeable YAML conflicts).
+# NOTE: every collaborator must have Git LFS installed (`git lfs install`).
+*.unity  filter=lfs diff=lfs merge=lfs -text lockable
+*.prefab filter=lfs diff=lfs merge=lfs -text lockable
