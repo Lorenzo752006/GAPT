@@ -1,78 +1,88 @@
 using System.Collections.Generic;
-using UnityEngine;
 
+// Task 7 - GOAP planner (backward / regressive search).
+//
+// As the brief describes, this starts AT THE GOAL and works backward: for an
+// unmet goal fact it finds an action whose effect produces that fact, then adds
+// that action's preconditions as new sub-goals, chaining back until every
+// remaining fact is already satisfied by the current world state. Among all
+// valid chains it keeps the cheapest one (lowest summed action cost).
 public class GOAPPlanner
 {
-    public Queue<GOAPAction> CreatePlan(
+    // Returns an ordered plan (first action to execute first), or null if the
+    // goal cannot be reached from the current world state with these actions.
+    public List<GOAPAction> Plan(
         Dictionary<string, bool> worldState,
         Dictionary<string, bool> goal,
         List<GOAPAction> actions)
     {
-        Queue<GOAPAction> plan = new Queue<GOAPAction>();
-        Dictionary<string, bool> currentState = new Dictionary<string, bool>(worldState);
+        List<GOAPAction> best = null;
+        float bestCost = float.MaxValue;
 
-        int safetyCounter = 0;
+        Regress(new Dictionary<string, bool>(goal), worldState, actions,
+                new List<GOAPAction>(), 0f, ref best, ref bestCost, 0);
 
-        while (!GoalAchieved(currentState, goal) && safetyCounter < 10)
+        return best;
+    }
+
+    private void Regress(
+        Dictionary<string, bool> goals,
+        Dictionary<string, bool> worldState,
+        List<GOAPAction> actions,
+        List<GOAPAction> chain,
+        float cost,
+        ref List<GOAPAction> best,
+        ref float bestCost,
+        int depth)
+    {
+        if (depth > 32) return; // safety against cyclic effect/precondition loops
+
+        // Find the first goal fact not already satisfied by the world state.
+        string unmetFact = null;
+        bool unmetValue = false;
+        foreach (var g in goals)
         {
-            bool foundAction = false;
-
-            foreach (GOAPAction action in actions)
+            if (!worldState.TryGetValue(g.Key, out bool current) || current != g.Value)
             {
-                if (plan.Contains(action))
-                    continue;
-
-                if (CanExecute(action, currentState))
-                {
-                    plan.Enqueue(action);
-
-                    foreach (var effect in action.effects)
-                    {
-                        currentState[effect.Key] = effect.Value;
-                    }
-
-                    foundAction = true;
-                    break;
-                }
-            }
-
-            if (!foundAction)
-            {
-                Debug.LogWarning("GOAP failed: no valid action found.");
+                unmetFact = g.Key;
+                unmetValue = g.Value;
                 break;
             }
-
-            safetyCounter++;
         }
 
-        return plan;
-    }
-
-    bool CanExecute(GOAPAction action, Dictionary<string, bool> state)
-    {
-        foreach (var precondition in action.preconditions)
+        // Nothing unmet -> the current world state already satisfies the goal.
+        // The chain was built goal-first, so reverse it into execution order.
+        if (unmetFact == null)
         {
-            if (!state.ContainsKey(precondition.Key))
-                return false;
-
-            if (state[precondition.Key] != precondition.Value)
-                return false;
+            if (cost < bestCost)
+            {
+                bestCost = cost;
+                best = new List<GOAPAction>(chain);
+                best.Reverse();
+            }
+            return;
         }
 
-        return true;
-    }
-
-    bool GoalAchieved(Dictionary<string, bool> state, Dictionary<string, bool> goal)
-    {
-        foreach (var g in goal)
+        // Try every action that can produce the unmet fact.
+        foreach (var action in actions)
         {
-            if (!state.ContainsKey(g.Key))
-                return false;
+            if (chain.Contains(action)) continue; // don't reuse an action in one chain
+            if (!action.effects.TryGetValue(unmetFact, out bool produced) || produced != unmetValue)
+                continue;
 
-            if (state[g.Key] != g.Value)
-                return false;
+            // Build the new sub-goal set: drop goals this action now satisfies,
+            // then add this action's own preconditions as fresh sub-goals.
+            var subGoals = new Dictionary<string, bool>(goals);
+            foreach (var e in action.effects)
+                if (subGoals.TryGetValue(e.Key, out bool gv) && gv == e.Value)
+                    subGoals.Remove(e.Key);
+            foreach (var p in action.preconditions)
+                subGoals[p.Key] = p.Value;
+
+            chain.Add(action);
+            Regress(subGoals, worldState, actions, chain, cost + action.cost,
+                    ref best, ref bestCost, depth + 1);
+            chain.RemoveAt(chain.Count - 1);
         }
-
-        return true;
     }
 }
