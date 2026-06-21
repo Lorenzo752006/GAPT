@@ -3,7 +3,7 @@ using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 
-public class EnemyMLAgent : Agent
+public class EnemyMLAgent : Unity.MLAgents.Agent
 {
     [SerializeField] private Transform targetGoal;
     [SerializeField] private float moveSpeed = 5f;

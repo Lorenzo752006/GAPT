@@ -13,7 +13,7 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine.InputSystem;
 
-public class MASAgentAI : Agent
+public class MASAgentAI : Unity.MLAgents.Agent
 {
     [SerializeField] private GridManager gridManager;
     [SerializeField] private Transform opponent;
