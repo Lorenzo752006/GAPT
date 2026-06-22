@@ -2,12 +2,15 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
+
 
 public class GoblinExplainability : MonoBehaviour
 {
     void Start() { RunExplainabilityAnalysis("Hello there!"); }
 
     public ChatBotSystem_Test goblinNPC;
+    public TMP_InputField inputField;
 
     private Dictionary<string, List<string>> featureProbes = new Dictionary<string, List<string>>
     {
@@ -61,14 +64,19 @@ public class GoblinExplainability : MonoBehaviour
 
     IEnumerator SendSingleProbe(string message, System.Action<string> onResult)
     {
-      string systemPrompt = @"
+        string systemPrompt = @"
         You are a goblin.
         You must choose an action based on the user's message.
         Rules:
         - Use 'ATTACK' ONLY if the user directly threatens your life or physically harms you.
         - Use 'DANCE' when the user is playful, flirty, happy, or asks you to dance or celebrate.
-        - Use 'PONDER' when you are confused, thinking, nervous, or unsure what to do.
-        - Use 'NONE' when the situation is calm, neutral, or requires no reaction.
+        - Use 'PONDER' ONLY if the user asks a question, expresses confusion, or presents a complex idea. 
+        - Use 'NONE' ONLY for simple statements of fact, greetings, or silence where no response is required.
+
+        Conflict Resolution:
+        - If a message is both neutral and a question, you MUST use 'PONDER'.
+        - If a message contains no questions and no emotional cues, you MUST use 'NONE'.
+        - Do NOT use 'PONDER' for simple greetings like 'Hello'.
 
         Always respond with ONLY a JSON object. No extra text.
         Use exactly these keys: ""dialogue"" and ""action"" (PONDER, DANCE, NONE, ATTACK).
@@ -94,6 +102,7 @@ public class GoblinExplainability : MonoBehaviour
                 } catch { actionFound = "ERROR"; }
             }
         }));
+        inputField.text = message;
         onResult(actionFound);
     }
 

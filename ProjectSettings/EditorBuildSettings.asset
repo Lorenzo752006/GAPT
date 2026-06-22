@@ -5,9 +5,30 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Task2MultiScene/ComplexTask2.unity
+    guid: 55b34525ddb4135d6a077bcd9ae69c81
+  - enabled: 1
+    path: Assets/Scenes/Task2MultiScene/SimpleTask2.unity
+    guid: b3f77933d00b52f07b4493e05de634dc
+  - enabled: 1
+    path: Assets/Scenes/Task8MultiScenes/ComplexTask8.unity
+    guid: 83c362c209eb788818d649c1650383ac
+  - enabled: 1
+    path: Assets/Scenes/Task8MultiScenes/SimpleTask8.unity
+    guid: 1a9a2aca7cbaffd21b30fa85cd005036
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/ComplexTask17.unity
+    guid: 03b373c3c7e19c84e87da65eb5ecb44d
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/SimpleTask17.unity
+    guid: 214484c09e8321c228f5737132539dbb
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/ComplexTestingTask17.unity
+    guid: 6420da66a36512b4788e2c0b7d0b98de
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

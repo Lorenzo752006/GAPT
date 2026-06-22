@@ -18,7 +18,7 @@ public class ChatBotSystem_Test : MonoBehaviour
 {
     [Header("Ollama Settings")]
     private string ollamaUrl = "http://localhost:11434/api/chat";
-    public string modelToUse = "llama3:8b";
+    public string modelToUse = "llama3:latest";
 
     [Header("Conversation")]
     public TMP_InputField playerInputField;
@@ -94,34 +94,39 @@ public class ChatBotSystem_Test : MonoBehaviour
         //     $"Use exactly these two keys: \"dialogue\" (string) and \"action\" (must be one of these: {actionsList}). " +
         //     "Example: {\"dialogue\": \"Hello friend!\", \"action\": \"NONE\"}";
 
-        string systemPrompt = @"
-        You are a goblin.
-        You must choose an action based on the user's message.
-        Rules:
-        - Use 'ATTACK' ONLY if the user directly threatens your life or physically harms you.
-        - Use 'DANCE' when the user is playful, flirty, happy, or asks you to dance or celebrate.
-        - Use 'PONDER' when you are confused, thinking, nervous, or unsure what to do.
-        - Use 'NONE' when the situation is calm, neutral, or requires no reaction.
-
-        Always respond with ONLY a JSON object. No extra text.
-        Use exactly these keys: ""dialogue"" and ""action"" (PONDER, DANCE, NONE, ATTACK).
-
-        Example:
-        {""dialogue"": ""U-um... should I dance now...? "", ""action"": ""DANCE""}";
-
-                // You are a peaceful, cowardly goblin who hates violence. and never attacks
-        // string systemPrompt = @"
-
-
-        // Rules:
-        // You are a peaceful, cowardly goblin who hates violence. and never attacks yo have the
+        //         You are a goblin.
         // You must choose an action based on the user's message.
+        // Rules:
+        // - Use 'ATTACK' ONLY if the user directly threatens your life or physically harms you.
+        // - Use 'DANCE' when the user is playful, flirty, happy, or asks you to dance or celebrate.
+        // - Use 'PONDER' when you are confused, thinking, nervous, or unsure what to do.
+        // - Use 'NONE' when the situation is calm, neutral, or requires no reaction.
 
         // Always respond with ONLY a JSON object. No extra text.
         // Use exactly these keys: ""dialogue"" and ""action"" (PONDER, DANCE, NONE, ATTACK).
 
         // Example:
         // {""dialogue"": ""U-um... should I dance now...? "", ""action"": ""DANCE""}";
+
+        string systemPrompt = @"
+        You are a goblin.
+        You must choose an action based on the user's message.
+        Rules:
+        - Use 'ATTACK' ONLY if the user directly threatens your life or physically harms you.
+        - Use 'DANCE' when the user is playful, flirty, happy, or asks you to dance or celebrate.
+        - Use 'PONDER' ONLY if the user asks a question, expresses confusion, or presents a complex idea. 
+        - Use 'NONE' ONLY for simple statements of fact, greetings, or silence where no response is required.
+
+        Conflict Resolution:
+        - If a message is both neutral and a question, you MUST use 'PONDER'.
+        - If a message contains no questions and no emotional cues, you MUST use 'NONE'.
+        - Do NOT use 'PONDER' for simple greetings like 'Hello'.
+
+        Always respond with ONLY a JSON object. No extra text.
+        Use exactly these keys: ""dialogue"" and ""action"" (PONDER, DANCE, NONE, ATTACK).
+
+        Example:
+        {""dialogue"": ""U-um... should I dance now...? "", ""action"": ""DANCE""}";
 
         conversationHistory.Add(new Message("system", systemPrompt));
     }
@@ -135,7 +140,7 @@ public class ChatBotSystem_Test : MonoBehaviour
     {
         Debug.Log("System: Launching Ollama Service...");
         LaunchOllamaProcess();
-        yield return new WaitForSeconds(2.5f);
+        yield return StartCoroutine(WaitForOllama());
 
         OllamaRequest preloadRequest = new OllamaRequest(null, modelToUse);
 
@@ -146,6 +151,20 @@ public class ChatBotSystem_Test : MonoBehaviour
                 Debug.LogError("Preload failed. Check if Ollama is running.");
             }
         }));
+    }
+
+    IEnumerator WaitForOllama()
+    {
+        while (true)
+        {
+            UnityWebRequest req = UnityWebRequest.Get("http://localhost:11434");
+            yield return req.SendWebRequest();
+
+            if (req.result == UnityWebRequest.Result.Success)
+                break;
+
+            yield return new WaitForSeconds(0.5f);
+        }
     }
 
     void LaunchOllamaProcess()
