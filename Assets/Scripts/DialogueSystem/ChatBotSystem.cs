@@ -142,16 +142,32 @@ public class ChatBotSystem_Test : MonoBehaviour
         LaunchOllamaProcess();
         yield return StartCoroutine(WaitForOllama());
 
-        OllamaRequest preloadRequest = new OllamaRequest(null, modelToUse);
+        Debug.Log("System: Warming up GPU VRAM...");
+        
+        // Create a raw JSON payload that tells Ollama to load the model without generating text
+        string preloadJson = "{\"model\":\"" + modelToUse + "\"}";
+        
+        // We target the /api/generate endpoint directly for an internal warm-up
+        using (UnityWebRequest request = new UnityWebRequest(ollamaUrl.Replace("/chat", "/generate"), "POST")) 
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(preloadJson);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.timeout = 120;
 
-        yield return StartCoroutine(AskOllama(preloadRequest, (success) => {
-            if (success) {
-                Debug.Log("Preload Complete. Model is in GPU.");
-            } else {
-                Debug.LogError("Preload failed. Check if Ollama is running.");
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success) 
+            {
+                Debug.Log("Preload Complete! Model is hot in GPU. Ready for instant player input.");
+            } 
+            else 
+            {
+                Debug.LogError("Preload failed. Check if Ollama is running properly.");
             }
-        }));
-    }
+        }
+}
 
     IEnumerator WaitForOllama()
     {
@@ -345,6 +361,12 @@ public class ChatBotSystem_Test : MonoBehaviour
             ).Trim();
 
             ChatbotReturn ChatBotAct = JsonConvert.DeserializeObject<ChatbotReturn>(content);
+
+            if (string.IsNullOrEmpty(ChatBotAct.dialogue) && ChatBotAct.action == "NONE")
+            {
+                Debug.Log("Baseline JSON warmup received successfully.");
+                return true; 
+            }
 
             if (ChatBotAct == null || string.IsNullOrEmpty(ChatBotAct.dialogue))
             {
