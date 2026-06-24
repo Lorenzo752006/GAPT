@@ -1,0 +1,65 @@
+{
+    "EnemyTracker": {
+        "checkpoints": [
+            {
+                "steps": 499872,
+                "file_path": "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-499872.onnx",
+                "reward": -9.771992623806,
+                "creation_time": 1778016424.9840367,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-499872.pt"
+                ]
+            },
+            {
+                "steps": 999985,
+                "file_path": "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-999985.onnx",
+                "reward": 11.222848892211914,
+                "creation_time": 1778023587.5961843,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-999985.pt"
+                ]
+            },
+            {
+                "steps": 1499910,
+                "file_path": "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-1499910.onnx",
+                "reward": null,
+                "creation_time": 1778030761.0060673,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-1499910.pt"
+                ]
+            },
+            {
+                "steps": 1999579,
+                "file_path": "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-1999579.onnx",
+                "reward": -4.1888816356658936,
+                "creation_time": 1778037909.4705174,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-1999579.pt"
+                ]
+            },
+            {
+                "steps": 2000091,
+                "file_path": "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-2000091.onnx",
+                "reward": -4.1888816356658936,
+                "creation_time": 1778037909.6897254,
+                "auxillary_file_paths": [
+                    "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-2000091.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 2000091,
+            "file_path": "results\\MLAgent_01\\EnemyTracker.onnx",
+            "reward": -4.1888816356658936,
+            "creation_time": 1778037909.6897254,
+            "auxillary_file_paths": [
+                "results\\MLAgent_01\\EnemyTracker\\EnemyTracker-2000091.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.7.0+cpu"
+    }
+}

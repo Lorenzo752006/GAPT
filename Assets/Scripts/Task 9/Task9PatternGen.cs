@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Task9;
+using UnityEngine.SceneManagement;
 
 public class Task9PatternGen : RoomFirstDungeonGenerator
 {
@@ -16,70 +17,103 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
     [Header("Advanced Tuning")]     
     [SerializeField] [Range(0, 1f)] private float floorBoost = 0.2f; // Increases floor chance manually to minimise small closed off rooms
 
+    [Header("Persistence")]
+    [SerializeField] private DungeonData savedData;
+
+    [Header("Permanent Map Settings")]
+    [SerializeField] private Task12SavedMapData permanentMap; 
+    [SerializeField] private bool usePermanentMap = false;
+    
+    // -----------------------------------------------------------------------------------------------------------------------------------
+
+    private bool hasLearned = false;
 
 
-    private Dictionary<bool, List<bool>> horizontalRules = new Dictionary<bool, List<bool>>();  
-    private Dictionary<bool, List<bool>> verticalRules = new Dictionary<bool, List<bool>>(); 
-    private Dictionary<bool, List<bool>> diagonalRules = new Dictionary<bool, List<bool>>(); 
+    // These dictionaries store the learned probabilities of placing a floor tile based on the presence of neighboring tiles.
+    private Dictionary<bool, List<bool>> horizontalRules = new Dictionary<bool, List<bool>>() 
+    { 
+        { true, new List<bool>() }, { false, new List<bool>() } 
+    };
+    private Dictionary<bool, List<bool>> verticalRules = new Dictionary<bool, List<bool>>() 
+    { 
+        { true, new List<bool>() }, { false, new List<bool>() } 
+    };
+    private Dictionary<bool, List<bool>> diagonalRules = new Dictionary<bool, List<bool>>() 
+    { 
+        { true, new List<bool>() }, { false, new List<bool>() } 
+    };
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
 
     private void Start()
     {
+        GenerateNewRandomMap();
+    }
+
+    public void GenerateNewRandomMap()
+    {
+        // Only learn once to save CPU time
+        if (!hasLearned)
+        {
+            LearnFromTilemap();
+            hasLearned = true;
+        }
+
         runProceduralGeneration();
     }
 
 
+
+    public override void generateDungeon()
+    {
+        GenerateNewRandomMap();
+    }
+
+
+
+
     protected override void runProceduralGeneration()
     {
-        // Learning Phase
-        LearnFromTilemap();
+        HashSet<Vector2Int> finalMap = new HashSet<Vector2Int>();
 
-        // Generation Phase
-        HashSet<Vector2Int> rawMap = GenerateNewMap();
+        // Determine the map layout (Load vs Generate)
+        if (usePermanentMap && permanentMap != null && permanentMap.floorPositions.Count > 0)
+        {
+            foreach (var pos in permanentMap.floorPositions)
+            {
+                finalMap.Add(pos + startPosition);
+            }
+            Debug.Log("Loading Permanent Map Layout...");
+        }
+        else
+        {
+            HashSet<Vector2Int> rawMap = GenerateNewMap();
 
-        // Polishing Phase (Smoothing)
-        HashSet<Vector2Int> polishedMap = SmoothMap(rawMap);
-        polishedMap = SmoothMap(polishedMap);
-        polishedMap = SmoothMap(polishedMap); // to further reduce noise and create more cohesive areas
-        //(Remove unreachable islands)
-        HashSet<Vector2Int> finalMap = KeepOnlyLargestArea(polishedMap);
+            // Polishing Phase
+            HashSet<Vector2Int> polishedMap = SmoothMap(rawMap);
+            polishedMap = SmoothMap(polishedMap);
+            polishedMap = SmoothMap(polishedMap); 
+            
+            finalMap = KeepOnlyLargestArea(polishedMap);
+        }
 
-        //Visualization
+        // 2. Visualization
         tileMapVisualizer.Clear();
         tileMapVisualizer.paintFloorTiles(finalMap);
         WallGenerator.createWalls(finalMap, tileMapVisualizer);
 
-        // Sync with your new Grid Manager
+        // Update GridManager BEFORE spawning anything
         if (GridManagerTask9.Instance != null)
         {
-            // We pass the finalMap and the startPosition so the grid coordinates align
             GridManagerTask9.Instance.InitializeFromTilemap(finalMap);
-            
-            Debug.Log("GridManagerTask9 updated with new procedural map data.");
         }
 
-        // Move the player to a valid starting position on the new map
-        SpawnPlayerOnFloor(finalMap);
-    
-    }   
-
-
-    private void SpawnPlayerOnFloor(HashSet<Vector2Int> finalMap)
-    {
-        // Get the first available floor tile from our set
-        foreach (var pos in finalMap)
-        {
-            Task9PlayerController player = FindAnyObjectByType<Task9PlayerController>();
-            if (player != null)
-            {
-                // Convert global tile position to the local grid position the Player understands
-                Vector2Int localPos = pos - startPosition;
-                player.SetPosition(localPos);
-                
-                Debug.Log($"Player spawned at local grid position: {localPos}");
-                break; // Exit after moving the player once
-            }
-        }
+        // Spawn Entities (This handles the initial scene start setup)
+        SpawnEntities(finalMap);
     }
+
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
 
     private void LearnFromTilemap()
     {
@@ -114,38 +148,64 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
     }
 
 
+    [ContextMenu("Save Learned Patterns")]
+    public void SavePatternsToFile()
+    {
+        if (savedData == null) { Debug.LogError("Attach the DungeonData file!"); return; }
+
+        savedData.horizontalTrue = new List<bool>(horizontalRules[true]);
+        savedData.horizontalFalse = new List<bool>(horizontalRules[false]);
+        savedData.verticalTrue = new List<bool>(verticalRules[true]);
+        savedData.verticalFalse = new List<bool>(verticalRules[false]);
+        savedData.diagonalTrue = new List<bool>(diagonalRules[true]);
+        savedData.diagonalFalse = new List<bool>(diagonalRules[false]);
+
+    #if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(savedData);
+        UnityEditor.AssetDatabase.SaveAssets();
+    #endif
+        Debug.Log("Success! Patterns saved to " + savedData.name);
+    }
+
+
 
     private HashSet<Vector2Int> GenerateNewMap()
     {
-        HashSet<Vector2Int> newFloor = new HashSet<Vector2Int>();   
-        bool[,] grid = new bool[genSize.x, genSize.y];  
+        HashSet<Vector2Int> newFloor = new HashSet<Vector2Int>();
+        bool[,] grid = new bool[genSize.x, genSize.y];
 
-        for (int x = 1; x < genSize.x; x++)  
+        // Seed the first tile so the logic has a starting point
+        grid[0, 0] = true; 
+        newFloor.Add(new Vector2Int(0, 0) + startPosition);
+
+        List<bool> choices = new List<bool>(); 
+
+        for (int x = 0; x < genSize.x; x++)
         {
-            for (int y = 1; y < genSize.y; y++)
+            for (int y = 0; y < genSize.y; y++)
             {
-                bool left = grid[x - 1, y];
-                bool down = grid[x, y - 1];
-                bool downLeft = grid[x - 1, y - 1];
+                // Skip the seed tile we already placed
+                if (x == 0 && y == 0) continue;
 
+                // Protective boundary checks to prevent IndexOutOfRangeException
+                bool left = (x > 0) ? grid[x - 1, y] : false;
+                bool down = (y > 0) ? grid[x, y - 1] : false;
+                bool downLeft = (x > 0 && y > 0) ? grid[x - 1, y - 1] : false;
 
-                // Decision Making Based on Learned Patterns
-                List<bool> choices = new List<bool>();
-                choices.AddRange(horizontalRules[left]);
-                choices.AddRange(verticalRules[down]);
-                choices.AddRange(diagonalRules[downLeft]);
+                choices.Clear();
+                
+                // pull from saved data file
+                choices.AddRange(left ? savedData.horizontalTrue : savedData.horizontalFalse);
+                choices.AddRange(down ? savedData.verticalTrue : savedData.verticalFalse);
+                choices.AddRange(downLeft ? savedData.diagonalTrue : savedData.diagonalFalse);
 
                 if (choices.Count > 0)
                 {
                     bool decision = choices[Random.Range(0, choices.Count)];
                     
-                    // Floor Boosting 
-                    // If the AI wants to place a wall, but a neighbor is a floor, 
-                    // give it a second chance to "keep the room going."
-                    if (!decision && (left || down || downLeft))
-                    {
-                        if (Random.value < floorBoost) decision = true;
-                    }
+                    // Floor Boost helps bridge gaps if the learned data is too "sparse"
+                    if (!decision && (left || down || downLeft) && Random.value < floorBoost) 
+                        decision = true;
 
                     grid[x, y] = decision;
                     if (decision) newFloor.Add(new Vector2Int(x, y) + startPosition);
@@ -154,6 +214,8 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
         }
         return newFloor;
     }
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
 
 
     private HashSet<Vector2Int> SmoothMap(HashSet<Vector2Int> floorPositions)
@@ -235,4 +297,122 @@ public class Task9PatternGen : RoomFirstDungeonGenerator
         allAreas.Sort((a, b) => b.Count.CompareTo(a.Count));
         return allAreas.Count > 0 ? allAreas[0] : new HashSet<Vector2Int>();
     }
+
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
+
+
+    private void SpawnEntities(HashSet<Vector2Int> finalMap)
+    {
+        List<Vector2Int> floorList = new List<Vector2Int>(finalMap);
+        if (floorList.Count < 2) return;
+
+        // Sync Player
+        Task9PlayerController player = FindAnyObjectByType<Task9PlayerController>();
+        Vector2Int playerGridPos = floorList[0];
+        if (player != null) player.SetPosition(playerGridPos);
+
+        // Find Spacious Tiles
+        List<Vector2Int> spaciousTiles = new List<Vector2Int>();
+        foreach (var tile in floorList)
+        {
+            if (finalMap.Contains(tile + Vector2Int.up) && finalMap.Contains(tile + Vector2Int.down) &&
+                finalMap.Contains(tile + Vector2Int.left) && finalMap.Contains(tile + Vector2Int.right))
+                spaciousTiles.Add(tile);
+        }
+
+        List<Vector2Int> candidateList = spaciousTiles.Count > 0 ? spaciousTiles : floorList;
+        candidateList.Sort((a, b) => Vector2.Distance(playerGridPos, b).CompareTo(Vector2.Distance(playerGridPos, a)));
+        Vector2Int bestEnemyPos = candidateList[0];
+
+        // Robust Enemy Finding (Works for Scene 9 and Scene 12)
+        
+        EnemyPathAgentTask9 pathEnemy = FindAnyObjectByType<EnemyPathAgentTask9>();
+        GameObject enemyObj = (pathEnemy != null) ? pathEnemy.gameObject : GameObject.FindGameObjectWithTag("Enemy");
+
+        if (enemyObj != null)
+        {
+            Vector3 spawnWorldPos = (GridManagerTask9.Instance != null) 
+                ? GridManagerTask9.Instance.GridToWorld(bestEnemyPos.x, bestEnemyPos.y) 
+                : new Vector3(bestEnemyPos.x, bestEnemyPos.y, 0);
+
+            enemyObj.transform.position = spawnWorldPos;
+
+            if (enemyObj.TryGetComponent<Rigidbody2D>(out var rb)) rb.linearVelocity = Vector2.zero;
+            
+            // Check if we are in the Task 12 scene
+            if (SceneManager.GetActiveScene().name == "Task12") 
+            {
+                if (pathEnemy != null) pathEnemy.enabled = false; 
+                Debug.Log("Enemy movement disabled for Task 12.");
+            }
+            else
+            {
+                if (pathEnemy != null) pathEnemy.enabled = true;
+                Debug.Log("Enemy movement enabled.");
+            }
+        }
+    }
+
+
+    public Vector2 GetRandomFloorPosition()
+    {
+        // Access the tilemap visualizer to get the list of floor tiles currently painted
+        // Safety check: find all active floor tiles in the current grid
+        List<Vector2Int> floors = new List<Vector2Int>();
+        for (int x = 0; x < genSize.x; x++)
+        {
+            for (int y = 0; y < genSize.y; y++)
+            {
+                if (GridManagerTask9.Instance.IsWalkable(x, y)) 
+                    floors.Add(new Vector2Int(x, y));
+            }
+        }
+
+        if (floors.Count > 0)
+        {
+            Vector2Int randomTile = floors[Random.Range(0, floors.Count)];
+            return GridManagerTask9.Instance.GridToWorld(randomTile.x, randomTile.y);
+        }
+
+        return Vector2.zero; // Fallback
+    }
+
+
+
+
+    // FOR TASK 12 -----------------------------------------------------------------------------------------------------------------------------------
+
+    
+    [ContextMenu("Save Current Map to Asset")]
+    public void SaveToPermanentAsset()
+    {
+        if (permanentMap == null)
+        {
+            Debug.LogError("Please assign a SavedMapData asset to the 'permanentMap' slot!");
+            return;
+        }
+
+        permanentMap.floorPositions.Clear();
+
+        // We look at what is currently in the GridManager to see where the floors are
+        for (int x = 0; x < genSize.x; x++)
+        {
+            for (int y = 0; y < genSize.y; y++)
+            {
+                if (GridManagerTask9.Instance.IsWalkable(x, y))
+                {
+                    permanentMap.floorPositions.Add(new Vector2Int(x, y));
+                }
+            }
+        }
+
+    #if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(permanentMap);
+        UnityEditor.AssetDatabase.SaveAssets();
+    #endif
+
+        Debug.Log($"Successfully saved {permanentMap.floorPositions.Count} tiles to {permanentMap.name}. You can now enable 'Use Permanent Map'.");
+    }
+
 }

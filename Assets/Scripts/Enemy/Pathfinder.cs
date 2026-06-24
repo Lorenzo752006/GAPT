@@ -105,7 +105,7 @@ public class Pathfinder : MonoBehaviour
                     neighborPos.x != current.position.x &&
                     neighborPos.y != current.position.y;
 
-                int moveCost = isDiagonal ? 14 : 10;
+                int moveCost = isDiagonal ? 14 : 10;   
 
                 int tentativeG = current.gCost + moveCost;
 

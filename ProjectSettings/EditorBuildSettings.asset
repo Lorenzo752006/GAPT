@@ -5,9 +5,45 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Main.unity
+    guid: 473bc8b35f4269c4d8c4d449da5cfba3
+  - enabled: 1
+    path: Assets/Scenes/Task2.unity
+    guid: 55b34525ddb4135d6a077bcd9ae69c81
+  - enabled: 1
+    path: Assets/Scenes/Task3Basic.unity
+    guid: bb2e953537c183643803b4e8c9ef00bf
+  - enabled: 1
+    path: Assets/Scenes/Task3Complex.unity
+    guid: 0a4b8c2a8e53f8d489e533bcbbc91a8a
+  - enabled: 1
+    path: Assets/Scenes/Task 5.unity
+    guid: 7c4fc0b2472246844b3dad8adcfcf1bb
+  - enabled: 1
+    path: Assets/Scenes/Task6.unity
+    guid: 8793c187abd52f14aaae1f786ad30ad3
+  - enabled: 1
+    path: Assets/Scenes/Task8.unity
+    guid: 83c362c209eb788818d649c1650383ac
+  - enabled: 1
+    path: Assets/Scenes/Task9Basic.unity
+    guid: 6d6580319a2d3a24e8545ae5b0fa07db
+  - enabled: 1
+    path: Assets/Scenes/Task9Complex.unity
+    guid: f788cada95356cd4095906941ba551dd
+  - enabled: 1
+    path: Assets/Scenes/Task 11.unity
+    guid: ae91b4fc29ba6e644819ae8c36626202
+  - enabled: 1
+    path: Assets/Scenes/Task12Basic.unity
+    guid: e679fb0b2669c8d478e1b5c5a1cd4bbd
+  - enabled: 1
+    path: Assets/Scenes/Task12Complex.unity
+    guid: f53cb5bde5c4bb34a9aaab775a011f67
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
