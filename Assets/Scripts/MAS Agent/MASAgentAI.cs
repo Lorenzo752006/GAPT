@@ -2,9 +2,15 @@
     Steps to activate MAS Agents
     1) Open Anaconda Prompt or Command Prompt
     2) Navigate to project folder
-    3) Activate agents with 'conda activate mlagents'
-    4) Run agents with 'mlagents-learn DungeonConfig.yaml --run-id=MAS_FinalTest' (ID name can be changed as needed)
-    5) Play Unity Project and observe
+    3) Create the conda environment with 'conda create -n mlagents python=3.9 -y' //(First-time Only)//
+    4) Activate agents with 'conda activate mlagents'
+    5) Install all dependencies with 'pip install numpy==1.21.2 "protobuf<=3.20.3" "onnx<=1.16.2" torch torchvision torchaudio mlagents==0.30.0' //(First-time Only)// (Versions are 
+       necessary for functionality)
+    7) Run agents with 'mlagents-learn MASConfig.yaml --run-id=(idname)' (ID name can be changed as needed)
+    8) Play Unity Project and observe
+    9) To exit, halt the process from the Unity Editor, and then press CTRL & C in the prompt window
+    10) Make sure to use different ID names when testing to prevent errors. Alternatively, if you wish to keep using the same ID name, add --resume to step 7's line' to continue with
+        the current data, or add --force to overwrite all the data and start over with the same ID name.
 */
 
 using UnityEngine;
