@@ -987,7 +987,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Task9PlayerController
   moveSpeed: 12
   moveCooldown: 0.1
-  isRandomWalk: 1
+  isRandomWalk: 0
   randomMoveInterval: 1
 --- !u!1 &1257494147
 GameObject:
