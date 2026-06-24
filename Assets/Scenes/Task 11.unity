@@ -166,22 +166,23 @@ MonoBehaviour:
   player: {fileID: 1051132958}
   goalX: 18
   goalY: 13
-  usePlayerPositionAsGoal: 1
-  totalEpisodes: 5000
+  usePlayerPositionAsGoal: 0
+  totalEpisodes: 50000
   maxStepsPerEpisode: 1000
   learningRate: 0.1
   discountFactor: 0.95
   startExplorationRate: 1
   minExplorationRate: 0.01
-  explorationDecay: 0.999
+  explorationDecay: 0.9999
   rewardGoal: 1000
-  penaltyWall: -10
+  penaltyWall: -1
   penaltyStep: 0
   retrainOnGoalChange: 1
   retrainCheckInterval: 0.5
   retrainEpisodes: 5000
   showTrainingLog: 1
   showQValueGizmos: 1
+  TestRandomGoalSpawn: 1
   trainingStatus: Not Started
   episodesCompleted: 0
   currentExplorationRate: 0
@@ -725,16 +726,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d8d39b3bab355a4fb8ef1a737f76048, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QLearningEnemyController
-  player: {fileID: 1051132958}
-  decisionInterval: 0.3
-  arrivalThreshold: 0.4
-  cellEntryThreshold: 0.5
-  maxLookAheadCells: 3
-  dynamicLookaheadDistance: 5
+  waypointTolerance: 0.7
   showGizmos: 1
-  currentAction: "\u2014"
-  currentGridPos: "\u2014"
-  qValues: "\u2014"
 --- !u!114 &2125404026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -748,16 +741,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyLocomotionTask6
   target: {fileID: 1051132958}
-  acceleration: 12
-  maxSpeed: 5
-  stopDistance: 2
+  acceleration: 8
+  maxSpeed: 4
+  stopDistance: 2.5
   brakeStrength: 5
   rotationSpeed: 10
   gripStrength: 15
   arrivalSharpness: 1.5
   flee: 0
   rayCount: 12
-  detectionRange: 4.5
+  detectionRange: 0.5
   wallDangerWeight: 2
   agentRadius: 0.4
   wallLayer:
