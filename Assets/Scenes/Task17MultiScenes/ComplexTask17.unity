@@ -698,7 +698,7 @@ GameObject:
   - component: {fileID: 498188103}
   m_Layer: 5
   m_Name: ChatBotText
-  m_TagString: Untagged
+  m_TagString: ChatBotOutput
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1991,7 +1991,7 @@ GameObject:
   - component: {fileID: 1296627352}
   m_Layer: 5
   m_Name: InputField (TMP)
-  m_TagString: Untagged
+  m_TagString: ChatBotInput
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3325,6 +3325,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChatBotSystem_Test
   modelToUse: llama3:latest
+  persistInScenes:
+  - ComplexTestingTask17
+  - SimpleTask17
+  - ComplexTask17
+  defaultMaxHistory: 10
+  historyOverrides:
+  - sceneName: ComplexTestingTask17
+    maxHistory: 2
   playerInputField: {fileID: 1296627352}
   ChatBotOutput: {fileID: 498188103}
   maxHistory: 10
@@ -3406,7 +3414,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 404390616904c555e8558fe2dcf3855a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GoblinActions
-  mainCamera: {fileID: 1858619676}
   attackColor: {r: 0.5568628, g: 0.27058825, b: 0.27058825, a: 1}
   danceColor: {r: 0.12941177, g: 0.4509804, b: 0.24705882, a: 1}
   ponderColor: {r: 0.17180909, g: 0.0021359965, b: 0.4528302, a: 0.9490196}

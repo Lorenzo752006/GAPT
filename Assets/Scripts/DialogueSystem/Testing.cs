@@ -7,7 +7,32 @@ using TMPro;
 
 public class GoblinExplainability : MonoBehaviour
 {
-    void Start() { RunExplainabilityAnalysis("Hello there!"); }
+    void Start() { } 
+
+    void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+
+            if (goblinNPC == null)
+                goblinNPC = FindAnyObjectByType<ChatBotSystem_Test>();
+            if (goblinNPC == null)
+            {
+                Debug.LogWarning("GoblinExplainability: Could not find ChatBotSystem_Test.");
+                return;
+            }
+            if (inputField == null)
+                inputField = FindAnyObjectByType<TMP_InputField>();
+            RunExplainabilityAnalysis("Hello there!");
+    }
 
     public ChatBotSystem_Test goblinNPC;
     public TMP_InputField inputField;
@@ -128,3 +153,4 @@ public class GoblinExplainability : MonoBehaviour
         Debug.Log("<b>=== END OF REPORT ===</b>");
     }
 }
+
