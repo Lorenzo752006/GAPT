@@ -3,9 +3,7 @@ using UnityEngine;
 using Random = UnityEngine.Random;
 using System.Linq;
 
-// Add limits for offsets and corridors Done
-// Add Array for different wall type placment Done
-// Implement reandom object placment Done
+
 public class RoomFirstDungeonGenerator : AbstarctDungeonGenerator
 {
     [SerializeField]

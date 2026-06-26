@@ -44,6 +44,15 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Task12Complex.unity
     guid: f53cb5bde5c4bb34a9aaab775a011f67
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/ComplexTask17.unity
+    guid: 03b373c3c7e19c84e87da65eb5ecb44d
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/SimpleTask17.unity
+    guid: 214484c09e8321c228f5737132539dbb
+  - enabled: 1
+    path: Assets/Scenes/Task17MultiScenes/ComplexTestingTask17.unity
+    guid: 6420da66a36512b4788e2c0b7d0b98de
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
