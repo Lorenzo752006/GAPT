@@ -180,24 +180,3 @@ public class TileMapVisualizer : MonoBehaviour
 
 
 }
-                // if((type & 0b00110000) == 16)
-                //     wallTile = wallInnerCornerUpRightDiagonalUpRight;
-                // else if((type & 0b00110000) == 32)
-                //     wallTile = wallInnerCornerUpLeftDiagonalUpLeft;
-                // else
-                //     wallTile = TopTile;
-                // wallTile = TopTile;
-
-                //          if(floorUp)
-                //     if((type & 0b00110000) == 16)
-                //         wallTile = wallInnerCornerUpRightDiagonalUpRight;
-                //     else if((type & 0b00110000) == 32)
-                //         wallTile = wallInnerCornerUpLeftDiagonalUpLeft;
-                //     else if((type & 0b00110001) == 33){
-                //         Debug.Log(type); 
-                //         wallTile = wallInnerCornerUpRightDiagonalUpRight;
-                //     }
-                //     else
-                //         wallTile = Test;
-                // else
-                //     wallTile = TopTile;

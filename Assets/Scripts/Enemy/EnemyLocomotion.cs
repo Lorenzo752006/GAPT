@@ -166,9 +166,12 @@ public class EnemyLocomotion : MonoBehaviour
         return finalHeading * maxSpeed * arrival * braking;
     }
 
+    public void enableFlee()
+    {
+        flee = !flee;
+    }
 
-
-    private void OnDrawGizmosSelected()
+    private void OnDrawGizmos()
     {
         if (rb == null || rayDirections == null) return;
 
@@ -193,4 +196,6 @@ public class EnemyLocomotion : MonoBehaviour
             }
         }
     }
+
+    
 }
