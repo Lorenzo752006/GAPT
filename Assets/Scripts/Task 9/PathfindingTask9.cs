@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Task9; // Connects to your GridManagerTask9
+using Task9; 
 
 namespace Task9
 {
@@ -99,7 +99,7 @@ namespace Task9
         {
             List<Vector2Int> neighbors = new List<Vector2Int>();
             
-            // 1. Check Cardinal Directions (Up, Down, Left, Right) - Always Safe
+            // Check Cardinal Directions (Up, Down, Left, Right) - Always Safe
             Vector2Int[] cardinals = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
             foreach (var dir in cardinals)
             {
@@ -110,7 +110,7 @@ namespace Task9
                 }
             }
 
-            // 2. Check Diagonal Directions - Only add if the "Side" tiles are also walkable
+            // Check Diagonal Directions - Only add if the "Side" tiles are also walkable
             // This prevents cutting through a crack between two diagonal walls
             CheckDiagonal(pos, new Vector2Int(1, 1), neighbors);   // Top-Right
             CheckDiagonal(pos, new Vector2Int(-1, 1), neighbors);  // Top-Left

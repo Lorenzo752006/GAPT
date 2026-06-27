@@ -9,7 +9,7 @@ namespace Task9
     {
         [Header("References")]
         public Transform player;
-        public PathfinderTask9 pathfinder; // Points to Task 9 version
+        public PathfinderTask9 pathfinder; 
         public Transform steeringTarget;
 
         [Header("Settings")]
