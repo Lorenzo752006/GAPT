@@ -31,4 +31,10 @@ public class EnemyHealth : MonoBehaviour
         if (currentHealth <= 0f)
             Destroy(gameObject);
     }
+
+    // Used by Task 10 when the decision tree is loaded.
+    public void ResetHealthToFull()
+    {
+        currentHealth = maxHealth;
+    }
 }

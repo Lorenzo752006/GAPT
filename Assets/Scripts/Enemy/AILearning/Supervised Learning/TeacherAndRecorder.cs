@@ -2,8 +2,8 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Manual teacher for Task 10. The player labels behaviour live,
-// while this script also records the current state every few seconds.
+// Manual teacher and data recorder for Task 10.
+// This script lets the user manually label enemy behaviour and record training samples.
 public class TeacherAndRecorder : MonoBehaviour
 {
     [Header("References")]
@@ -16,6 +16,10 @@ public class TeacherAndRecorder : MonoBehaviour
     [SerializeField] private float attackRange = 1.2f;
     [SerializeField] private string fileName = "task10_trainingdata.json";
 
+    [Header("Mode")]
+    [SerializeField] private bool manualControlEnabled = true;
+    [SerializeField] private bool recordingEnabled = true;
+
     private float timer;
     private TrainingSampleCollection collection = new TrainingSampleCollection();
 
@@ -23,25 +27,39 @@ public class TeacherAndRecorder : MonoBehaviour
 
     void Update()
     {
-        HandleTeacherInput();
+        // Only allow manual label input while teacher mode is active.
+        if (manualControlEnabled)
+            HandleTeacherInput();
 
-        timer += Time.deltaTime;
-        if (timer >= recordInterval)
+        // Record samples only while recording is enabled.
+        if (recordingEnabled)
         {
-            timer = 0f;
-            RecordSample();
+            timer += Time.deltaTime;
+
+            if (timer >= recordInterval)
+            {
+                timer = 0f;
+                RecordSample();
+            }
         }
 
-        // O saves the current dataset. P clears it.
+        // O saves the dataset.
         if (Keyboard.current != null && Keyboard.current.oKey.wasPressedThisFrame)
             SaveToFile();
 
+        // P clears the currently recorded dataset.
         if (Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame)
             ClearSamples();
     }
 
     void FixedUpdate()
     {
+        // This is the important fix.
+        // If manual control is disabled, this script stops controlling movement.
+        // This allows DecisionTreeBrain to control the enemy without conflict.
+        if (!manualControlEnabled)
+            return;
+
         if (locomotion == null)
             return;
 
@@ -56,15 +74,17 @@ public class TeacherAndRecorder : MonoBehaviour
 
             case EnemyActionLabel.Chase:
                 if (player == null) return;
+
                 locomotion.SetTarget(player);
                 locomotion.SetFlee(false);
                 locomotion.SetSpeedMultiplier(1f);
                 break;
 
             case EnemyActionLabel.Attack:
-                // Attack uses the same movement as chase here.
-                // The important part for Task 10 is the recorded label.
                 if (player == null) return;
+
+                // Attack currently uses chase movement.
+                // The important part for supervised learning is the recorded label.
                 locomotion.SetTarget(player);
                 locomotion.SetFlee(false);
                 locomotion.SetSpeedMultiplier(1f);
@@ -72,6 +92,7 @@ public class TeacherAndRecorder : MonoBehaviour
 
             case EnemyActionLabel.Flee:
                 if (player == null) return;
+
                 locomotion.SetTarget(player);
                 locomotion.SetFlee(true);
                 locomotion.SetSpeedMultiplier(1f);
@@ -84,7 +105,6 @@ public class TeacherAndRecorder : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
-        // Top row and numpad are both supported.
         if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
         {
             CurrentLabel = EnemyActionLabel.Idle;
@@ -132,6 +152,7 @@ public class TeacherAndRecorder : MonoBehaviour
         };
 
         collection.samples.Add(sample);
+
         Debug.Log($"Recorded sample - HP:{hpPercent:F2} Dist:{dist:F2} Attack:{canAttack} Label:{CurrentLabel}");
     }
 
@@ -141,6 +162,7 @@ public class TeacherAndRecorder : MonoBehaviour
         string json = JsonUtility.ToJson(collection, true);
 
         File.WriteAllText(path, json);
+
         Debug.Log($"Task10: Saved {collection.samples.Count} samples to {path}");
     }
 
@@ -162,5 +184,21 @@ public class TeacherAndRecorder : MonoBehaviour
 
         string json = File.ReadAllText(path);
         return JsonUtility.FromJson<TrainingSampleCollection>(json);
+    }
+
+    // Called by DecisionTreeBrain after training.
+    // This prevents the teacher from fighting the trained AI.
+    public void SetManualControlEnabled(bool enabled)
+    {
+        manualControlEnabled = enabled;
+        Debug.Log("Task10: Manual teacher control = " + enabled);
+    }
+
+    // Called by DecisionTreeBrain after training.
+    // Usually recording should stop once the trained AI takes over.
+    public void SetRecordingEnabled(bool enabled)
+    {
+        recordingEnabled = enabled;
+        Debug.Log("Task10: Recording = " + enabled);
     }
 }

@@ -1,96 +1,86 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/*
-    DecisionTreeBrain
-
-    This script controls the enemy behaviour using a trained Decision Tree.
-    The tree is trained from previously recorded gameplay data (Task 10 dataset).
-
-    Workflow:
-    1. At the start of the game the enemy remains idle.
-    2. Pressing the "L" key loads the dataset and trains the decision tree.
-    3. Once trained, the tree predicts which action the enemy should take
-       based on the current game state (health, distance, attack possibility).
-    4. The predicted action is then executed through the locomotion system.
-*/
-
+// Decision-tree controller for Task 10.
+// This script loads a recorded dataset, trains a decision tree,
+// then uses the tree to control the enemy.
 public class DecisionTreeBrain : MonoBehaviour
 {
     [Header("References")]
-
-    // Reference to the player so distance can be calculated
     [SerializeField] private Transform player;
-
-    // Locomotion system that actually moves the enemy
     [SerializeField] private EnemyLocomotionTask6 locomotion;
-
-    // Enemy health script used to read current health
     [SerializeField] private EnemyHealth enemyHealth;
-
-    // Trainer used to build the decision tree from data
     [SerializeField] private DecisionTreeTrainer trainer;
-
-    // Recorder used to load the previously recorded training dataset
     [SerializeField] private TeacherAndRecorder recorder;
 
     [Header("Combat Settings")]
-
-    // Distance at which the enemy is considered able to attack
     [SerializeField] private float attackRange = 1.2f;
 
-    // Root node of the trained decision tree
+    [Header("Flee Safety")]
+    [SerializeField] private float lowHealthFleeThreshold = 0.3f;
+
+    [Header("Reset Settings")]
+    [SerializeField] private Transform resetPoint;
+    [SerializeField] private bool resetPositionOnLoad = true;
+    [SerializeField] private bool resetHealthOnLoad = true;
+
+    [Header("Debug")]
+    [SerializeField] private bool printPredictions = true;
+
+    // Root node of the trained decision tree.
     private DecisionTreeNode root;
 
-    /*
-        Start()
+    // Starting position and rotation used if no reset point is assigned.
+    private Vector3 startingPosition;
+    private Quaternion startingRotation;
 
-        Runs once when the enemy is created.
-        The enemy begins in an idle state until the tree is trained.
-    */
     void Start()
     {
-        SetIdleState();
+        startingPosition = transform.position;
+        startingRotation = transform.rotation;
     }
 
-    /*
-        Update()
-
-        Checks for keyboard input using the new Input System.
-        Pressing "L" trains the decision tree using the saved dataset.
-    */
     void Update()
     {
+        // Press L to load the saved dataset, reset the enemy, and train the tree.
         if (Keyboard.current != null && Keyboard.current.lKey.wasPressedThisFrame)
             TrainTree();
     }
 
-    /*
-        FixedUpdate()
-
-        Runs every physics frame.
-        If the tree is not trained yet, the enemy remains idle.
-        Once trained, the tree predicts an action based on the current state.
-    */
     void FixedUpdate()
     {
-        // If the tree hasn't been trained yet, keep enemy idle
+        // Do nothing before the decision tree is trained.
+        // This allows TeacherAndRecorder to control the enemy during recording.
         if (root == null)
-        {
-            SetIdleState();
             return;
-        }
 
         if (locomotion == null)
             return;
 
-        // Build a snapshot of the current world state
+        // Build the current state that the tree will classify.
         TrainingSample sample = BuildSample();
 
-        // Ask the decision tree what action should be taken
+        // Predict an action from the decision tree.
         EnemyActionLabel action = Predict(root, sample);
 
-        // Execute the predicted action
+        // Safety correction:
+        // The enemy is not allowed to flee unless health is actually low.
+        if (action == EnemyActionLabel.Flee && sample.enemyHealthPercent > lowHealthFleeThreshold)
+        {
+            action = EnemyActionLabel.Chase;
+        }
+
+        if (printPredictions)
+        {
+            Debug.Log(
+                $"DecisionTree Prediction: {action} | " +
+                $"HP:{sample.enemyHealthPercent:F2} | " +
+                $"Distance:{sample.playerDistance:F2} | " +
+                $"CanAttack:{sample.canAttack}"
+            );
+        }
+
+        // Execute the chosen action through the locomotion system.
         switch (action)
         {
             case EnemyActionLabel.Idle:
@@ -98,43 +88,31 @@ public class DecisionTreeBrain : MonoBehaviour
                 break;
 
             case EnemyActionLabel.Chase:
-
                 if (player == null) return;
 
                 locomotion.SetTarget(player);
                 locomotion.SetSpeedMultiplier(1f);
                 locomotion.SetFlee(false);
-
                 break;
 
             case EnemyActionLabel.Attack:
-
                 if (player == null) return;
 
                 locomotion.SetTarget(player);
                 locomotion.SetSpeedMultiplier(1f);
                 locomotion.SetFlee(false);
-
                 break;
 
             case EnemyActionLabel.Flee:
-
                 if (player == null) return;
 
                 locomotion.SetTarget(player);
                 locomotion.SetSpeedMultiplier(1f);
                 locomotion.SetFlee(true);
-
                 break;
         }
     }
 
-    /*
-        SetIdleState()
-
-        Forces the enemy into a complete idle state.
-        This prevents drift or movement before the AI is trained.
-    */
     void SetIdleState()
     {
         if (locomotion == null)
@@ -146,56 +124,79 @@ public class DecisionTreeBrain : MonoBehaviour
         locomotion.StopMovement();
     }
 
-    /*
-        TrainTree()
-
-        Loads the recorded dataset and trains the decision tree.
-        The tree is stored in the 'root' node for later prediction.
-    */
     void TrainTree()
     {
-        var data = recorder.LoadFromFile();
+        if (recorder == null || trainer == null)
+        {
+            Debug.LogError("Task10: missing recorder or trainer reference.");
+            return;
+        }
 
-        if (data == null || data.samples.Count == 0)
+        TrainingSampleCollection data = recorder.LoadFromFile();
+
+        if (data == null || data.samples == null || data.samples.Count == 0)
         {
             Debug.LogError("Task10: no training samples.");
             return;
         }
 
-        // Train the decision tree
+        ResetEnemyForDecisionTree();
+
+        PrintLabelCounts(data);
+
         root = trainer.Train(data.samples);
 
-        Debug.Log("Task10: Decision tree trained.");
+        if (root == null)
+        {
+            Debug.LogError("Task10: tree training failed.");
+            return;
+        }
+
+        recorder.SetManualControlEnabled(false);
+        recorder.SetRecordingEnabled(false);
+
+        Debug.Log("Task10: Decision tree trained. Enemy reset. Teacher control disabled. Decision tree now controls enemy.");
     }
 
-    /*
-        BuildSample()
+    void ResetEnemyForDecisionTree()
+    {
+        SetIdleState();
 
-        Builds the current world-state snapshot that will be fed
-        into the decision tree for prediction.
+        if (resetPositionOnLoad)
+        {
+            if (resetPoint != null)
+            {
+                transform.position = resetPoint.position;
+                transform.rotation = resetPoint.rotation;
+            }
+            else
+            {
+                transform.position = startingPosition;
+                transform.rotation = startingRotation;
+            }
+        }
 
-        Features used by the classifier:
-        - enemy health percentage
-        - distance to player
-        - whether the enemy can attack
-    */
+        if (resetHealthOnLoad && enemyHealth != null)
+        {
+            enemyHealth.ResetHealthToFull();
+        }
+
+        Debug.Log("Task10: Enemy position and health reset.");
+    }
+
     TrainingSample BuildSample()
     {
         float hp = 0f;
 
-        // Convert health to percentage
-        if (enemyHealth.maxHealth > 0)
+        if (enemyHealth != null && enemyHealth.maxHealth > 0)
             hp = enemyHealth.currentHealth / enemyHealth.maxHealth;
 
-        // Distance between enemy and player
         float dist = player != null
             ? Vector2.Distance(transform.position, player.position)
             : 999f;
 
-        // Determine whether enemy is close enough to attack
         int canAttack = dist <= attackRange ? 1 : 0;
 
-        // Create and return a sample describing this state
         return new TrainingSample
         {
             enemyHealthPercent = hp,
@@ -204,21 +205,16 @@ public class DecisionTreeBrain : MonoBehaviour
         };
     }
 
-    /*
-        Predict()
-
-        Traverses the decision tree recursively until a leaf node is reached.
-        The leaf node contains the predicted action label.
-    */
     EnemyActionLabel Predict(DecisionTreeNode node, TrainingSample sample)
     {
-        // If the node is a leaf, return its prediction
+        if (node == null)
+            return EnemyActionLabel.Idle;
+
         if (node.isLeaf)
             return node.predictedLabel;
 
-        float value = 0f;
+        float value;
 
-        // Select which feature to evaluate
         if (node.featureIndex == 0)
             value = sample.enemyHealthPercent;
         else if (node.featureIndex == 1)
@@ -226,10 +222,41 @@ public class DecisionTreeBrain : MonoBehaviour
         else
             value = sample.canAttack;
 
-        // Traverse the appropriate branch of the tree
         if (value <= node.threshold)
             return Predict(node.left, sample);
 
         return Predict(node.right, sample);
+    }
+
+    void PrintLabelCounts(TrainingSampleCollection data)
+    {
+        int idle = 0;
+        int chase = 0;
+        int attack = 0;
+        int flee = 0;
+
+        foreach (TrainingSample sample in data.samples)
+        {
+            switch (sample.label)
+            {
+                case EnemyActionLabel.Idle:
+                    idle++;
+                    break;
+
+                case EnemyActionLabel.Chase:
+                    chase++;
+                    break;
+
+                case EnemyActionLabel.Attack:
+                    attack++;
+                    break;
+
+                case EnemyActionLabel.Flee:
+                    flee++;
+                    break;
+            }
+        }
+
+        Debug.Log($"Task10 Label Counts - Idle:{idle}, Chase:{chase}, Attack:{attack}, Flee:{flee}");
     }
 }
