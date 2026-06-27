@@ -437,7 +437,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AIModeSwitcher
   task4StatusText: {fileID: 0}
-  task13StatusText: {fileID: 0}
+  task13StatusText: {fileID: 1808946943}
   task16StatusText: {fileID: 0}
 --- !u!4 &459905186
 Transform:
@@ -488,11 +488,11 @@ RectTransform:
   - {fileID: 1808946942}
   m_Father: {fileID: 249733364}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 300, y: -150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 160, y: 30}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 0, y: 0}
 --- !u!114 &740782975
 MonoBehaviour:
   m_ObjectHideFlags: 0
