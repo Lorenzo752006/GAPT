@@ -301,64 +301,54 @@ public class ChatBotSystem_Test : MonoBehaviour
         }
     }
 
-    private static bool ollamaAlreadyStarted = false;
-    
     void LaunchOllamaProcess()
     {
-        // FIRST: Check if we already have a valid process
+        // Check if process is already running
         if (_ollamaProcess != null && !_ollamaProcess.HasExited)
         {
             Debug.Log($"Ollama already running with PID: {_ollamaProcess.Id}");
-            ollamaAlreadyStarted = true;
             return;
         }
 
-        // SECOND: Check for existing processes
+        // Check for an existing system process instance
         var ollamaProcesses = Process.GetProcessesByName("ollama");
-        var llamaProcesses = Process.GetProcessesByName("llama-server");
-        
         if (ollamaProcesses.Length > 0)
         {
             Debug.Log($"Found existing Ollama process PID: {ollamaProcesses[0].Id}");
-            _ollamaProcess = ollamaProcesses[0]; // STORE the process!
-            ollamaAlreadyStarted = true;
-            return;
-        }
-        
-        if (llamaProcesses.Length > 0)
-        {
-            Debug.Log($"Found llama-server running. Ollama is running.");
-            ollamaAlreadyStarted = true;
-            // We can't get the parent ollama.exe, but that's OK
+            _ollamaProcess = ollamaProcesses[0];
             return;
         }
 
-        if (ollamaAlreadyStarted)
-        {
-            Debug.Log("Ollama already started by this Unity session.");
-            return;
-        }
-
-        // THIRD: Launch new process
         try
         {
             ProcessStartInfo psi = new ProcessStartInfo();
-            #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-                psi.FileName = "ollama.exe";
-            #else
-                psi.FileName = "ollama";
-            #endif
-
             psi.Arguments = "serve";
             psi.UseShellExecute = false;
             psi.CreateNoWindow = true;
+
+            // Try to automatically find the path using our clean C# search
+            string detectedPath = FindOllamaInSystemPath();
+
+            if (!string.IsNullOrEmpty(detectedPath))
+            {
+                psi.FileName = detectedPath;
+            }
+            else
+            {
+                // Fallback to absolute standard defaults if the environment path search fails
+                #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+                    string localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+                    psi.FileName = System.IO.Path.Combine(localAppData, "Programs", "Ollama", "ollama.exe");
+                #elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
+                    psi.FileName = "/usr/local/bin/ollama";
+                #else
+                    psi.FileName = "ollama"; 
+                #endif
+            }
+
+            Debug.Log($"Launching Ollama from absolute path: {psi.FileName}");
             _ollamaProcess = Process.Start(psi);
 
-            if (_ollamaProcess != null)
-            {
-                Debug.Log($"Ollama launched. PID: {_ollamaProcess.Id}");
-                ollamaAlreadyStarted = true;
-            }
         }
         catch (System.Exception e)
         {
@@ -366,11 +356,75 @@ public class ChatBotSystem_Test : MonoBehaviour
         }
     }
 
+    // public void StopOllama()
+    // {
+    //     UnloadModelFromGPU();
+
+    //     // Kill EVERYTHING Ollama-related
+    //     string[] processNames = { "ollama", "llama-server" };
+        
+    //     foreach (string name in processNames)
+    //     {
+    //         var processes = Process.GetProcessesByName(name);
+    //         foreach (var p in processes)
+    //         {
+    //             try 
+    //             { 
+    //                 if (!p.HasExited)
+    //                 {
+    //                     p.Kill(); 
+    //                     p.WaitForExit(1000);
+    //                     Debug.Log($"Killed {name}.exe PID: {p.Id}");
+    //                 }
+    //                 p.Dispose();
+    //             }
+    //             catch (System.Exception e)
+    //             {
+    //                 Debug.LogWarning($"Could not kill {name}.exe: {e.Message}");
+    //             }
+    //         }
+    //     }
+
+    //     // Clear our reference
+    //     if (_ollamaProcess != null)
+    //     {
+    //         try 
+    //         { 
+    //             if (!_ollamaProcess.HasExited)
+    //                 _ollamaProcess.Kill();
+    //             _ollamaProcess.Dispose();
+    //         }
+    //         catch { }
+    //         _ollamaProcess = null;
+    //     }
+
+    //     Debug.Log("All Ollama processes stopped.");
+    // }
+
     public void StopOllama()
     {
         UnloadModelFromGPU();
 
-        // Kill EVERYTHING Ollama-related
+        // 1. First, safely kill our specific tracked process if we started it locally
+        if (_ollamaProcess != null)
+        {
+            try 
+            { 
+                // Skip .HasExited check to avoid permission/format errors.
+                // Just tell the OS to kill it; if it already exited, the catch block handles it.
+                _ollamaProcess.Kill();
+                _ollamaProcess.WaitForExit(1000);
+                Debug.Log("Tracked local Ollama process stopped.");
+            }
+            catch { }
+            finally
+            {
+                _ollamaProcess.Dispose();
+                _ollamaProcess = null;
+            }
+        }
+
+        // 2. Kill any other loose instances (Useful for Windows, will cleanly skip systemd on Linux)
         string[] processNames = { "ollama", "llama-server" };
         
         foreach (string name in processNames)
@@ -380,36 +434,26 @@ public class ChatBotSystem_Test : MonoBehaviour
             {
                 try 
                 { 
-                    if (!p.HasExited)
-                    {
-                        p.Kill(); 
-                        p.WaitForExit(1000);
-                        Debug.Log($"Killed {name}.exe PID: {p.Id}");
-                    }
-                    p.Dispose();
+                    // Direct kill without checking .HasExited avoids platform architecture bugs
+                    p.Kill(); 
+                    p.WaitForExit(1000);
+                    
+                    // Dynamically show .exe only if on Windows
+                    string ext = (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor) ? ".exe" : "";
+                    Debug.Log($"Killed background process: {name}{ext} (PID: {p.Id})");
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"Could not kill {name}.exe: {e.Message}");
+                    // This will silently catch permission blocks on Linux systemd instances, which is normal behavior!
+                    Debug.LogWarning($"Could not close background process {name}: {e.Message}");
+                }
+                finally
+                {
+                    p.Dispose();
                 }
             }
         }
-
-        // Clear our reference
-        if (_ollamaProcess != null)
-        {
-            try 
-            { 
-                if (!_ollamaProcess.HasExited)
-                    _ollamaProcess.Kill();
-                _ollamaProcess.Dispose();
-            }
-            catch { }
-            _ollamaProcess = null;
-        }
-
-        ollamaAlreadyStarted = false;
-        Debug.Log("All Ollama processes stopped.");
+        Debug.Log("Ollama shutdown sequence complete.");
     }
 
     void UnloadModelFromGPU()
@@ -612,10 +656,14 @@ public class ChatBotSystem_Test : MonoBehaviour
     // --- Utility ---
     void ClearConsole()
     {
+    #if UNITY_EDITOR
         var assembly = Assembly.GetAssembly(typeof(UnityEditor.Editor));
         var type = assembly.GetType("UnityEditor.LogEntries");
         var method = type.GetMethod("Clear");
         method.Invoke(new object(), null);
+    #else
+        // Do nothing in the final game build since there is no Unity console to clear!
+    #endif
     }
 
     void ReconnectInputFieldEvents()
@@ -641,4 +689,35 @@ public class ChatBotSystem_Test : MonoBehaviour
             Debug.LogWarning("ChatBotSystem: Could not find input field to reconnect events.");
         }
     }
+
+
+    private string FindOllamaInSystemPath()
+    {
+        // 1. Determine the executable name based on the current platform
+        string exeName = (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor) 
+            ? "ollama.exe" 
+            : "ollama";
+
+        // 2. Grab the system's environment variable paths
+        string pathVariable = System.Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(pathVariable)) return null;
+
+        // 3. Split the path list (Windows uses ';', Mac and Linux use ':')
+        char splitChar = (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor) ? ';' : ':';
+        string[] paths = pathVariable.Split(splitChar);
+
+        // 4. Look through every folder to see if the ollama executable exists
+        foreach (string path in paths)
+        {
+            string fullPath = System.IO.Path.Combine(path, exeName);
+            if (System.IO.File.Exists(fullPath))
+            {
+                return fullPath; // Found it! Returns the absolute path
+            }
+        }
+
+        return null; // Not found in the global paths
+    }
 }
+
+
