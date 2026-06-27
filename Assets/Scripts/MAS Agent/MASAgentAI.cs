@@ -44,17 +44,18 @@ public class MASAgentAI : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        // Basic observations (Absolute Positions)
+        // Always observe the current local position (3 floats: X, Y, Z)
         sensor.AddObservation(transform.localPosition);
-        sensor.AddObservation(opponent.localPosition);
-
-        // --- COMPLEX ADDITIONS ---
-        if (agentMode == ComplexityMode.Complex)
+    
+        // Always observe the opponent's local position (3 floats: X, Y, Z)
+        if (opponent != null)
         {
-            // Provide relative heading vector to opponent (makes pathing much easier to learn)
-            Vector3 heading = opponent.localPosition - transform.localPosition;
-            sensor.AddObservation(heading.normalized);
-            sensor.AddObservation(heading.magnitude);
+            sensor.AddObservation(opponent.transform.localPosition);
+        }
+        else
+        {
+            // Padding fallback to maintain exactly 6 floats if the opponent is missing
+            sensor.AddObservation(Vector3.zero);
         }
     }
 

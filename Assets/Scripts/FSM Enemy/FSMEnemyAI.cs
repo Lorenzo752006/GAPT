@@ -50,8 +50,7 @@ public class EnemyFSM : MonoBehaviour
         TransitionToState(SimpleState.Wander);
     }
 
-    void Update()
-    {
+    void Update(){
         bool regularUpdate = !isMoving;
         ExecuteMovementInterpolation();
 
