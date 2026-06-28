@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// Grid-based player controller used for the Task 6 arena.
+// The player only moves one cell at a time if the target cell is walkable.
 public class GridPlayerControllerTask6 : MonoBehaviour
 {
     [Header("Movement")]
@@ -48,7 +50,6 @@ public class GridPlayerControllerTask6 : MonoBehaviour
         else if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) direction = Vector2Int.right;
 
         if (direction == Vector2Int.zero) return;
-
         TryMove(direction);
     }
 
@@ -58,8 +59,7 @@ public class GridPlayerControllerTask6 : MonoBehaviour
 
         if (GridManager.Instance.IsWalkable(targetGrid.x, targetGrid.y))
         {
-            FacingDirection = direction; // IMPORTANT
-
+            FacingDirection = direction;
             gridPosition = targetGrid;
             targetWorldPosition = GridManager.Instance.GridToWorld(gridPosition.x, gridPosition.y);
             isMoving = true;
@@ -67,7 +67,7 @@ public class GridPlayerControllerTask6 : MonoBehaviour
         }
         else
         {
-            // Still update facing even if blocked (optional but useful)
+            // Still update facing even when the move is blocked.
             FacingDirection = direction;
         }
     }

@@ -1,2 +1,3 @@
-git lfs track "*.unity" --lockable
-git lfs track "*.prefab" --lockable
+# Unity serialized assets are committed as plain text (NOT Git LFS).
+# LFS was removed: the .unity/.prefab files in history are real YAML, never
+# LFS pointers, so an LFS filter only causes "should have been pointers" errors.

@@ -1,0 +1,56 @@
+# Task 14 - Imitation Learning (GAIL) trainer config for Unity ML-Agents.
+#
+# Behavior Name must match the BehaviorParameters component: "ImitationAgent".
+#
+# HOW TO USE
+#   1. In the scene, add a DemonstrationRecorder to the agent, tick "Record",
+#      set a Demonstration Name, press Play and steer with the ARROW KEYS
+#      (ImitationAgentController.Heuristic) to record a successful run.
+#      NOTE: re-record on the dungeon grid - the .demo files that shipped with
+#      the original 3D sample do NOT match this agent's 8 observations / 5
+#      discrete actions and must be replaced.
+#   2. Put the new .demo(s) in:  Assets/Scripts/Task 14/Demonstrations/
+#   3. Train:   mlagents-learn "Assets/Scripts/Task 14/Task14_GAIL.yaml" --run-id=Task14_GAIL
+#   4. Press Play in Unity when prompted. When done, drag the produced .onnx into
+#      the agent's BehaviorParameters > Model and set Behavior Type = Inference.
+#
+# BASIC vs COMPLEX (the brief's comparison):
+#   BASIC  imitation = behavioral cloning ONLY. To get it, set the two reward
+#          signals' strength to 0 and rely on behavioral_cloning alone (it mimics
+#          the demo but cannot recover from situations not in the recording).
+#   COMPLEX imitation = GAIL (below): behavioral_cloning gives it a head start while
+#          the gail + extrinsic reward signals drive PPO trial-and-error, so it
+#          learns recovery tactics for states the human never demonstrated.
+
+behaviors:
+  ImitationAgent:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 64
+      buffer_size: 2048
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+      gail:                       # <- the "complex" ingredient; set strength: 0 for basic/BC-only
+        gamma: 0.99
+        strength: 0.5
+        demo_path: "Assets/Scripts/Task 14/Demonstrations"
+    behavioral_cloning:
+      demo_path: "Assets/Scripts/Task 14/Demonstrations"
+      strength: 0.5
+      steps: 0
+    keep_checkpoints: 5
+    max_steps: 500000
+    time_horizon: 64
+    summary_freq: 10000

@@ -1,0 +1,39 @@
+{
+    "DungeonAgent": {
+        "elo": 1207.9184681246277,
+        "checkpoints": [
+            {
+                "steps": 510,
+                "file_path": "results\\MAS_FinalTest\\DungeonAgent\\DungeonAgent-510.onnx",
+                "reward": -3.159286149910518,
+                "creation_time": 1782321501.791357,
+                "auxillary_file_paths": [
+                    "results\\MAS_FinalTest\\DungeonAgent\\DungeonAgent-510.pt"
+                ]
+            },
+            {
+                "steps": 1161,
+                "file_path": "results\\MAS_FinalTest\\DungeonAgent\\DungeonAgent-1161.onnx",
+                "reward": -2.272333516014947,
+                "creation_time": 1782321553.274219,
+                "auxillary_file_paths": [
+                    "results\\MAS_FinalTest\\DungeonAgent\\DungeonAgent-1161.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 1161,
+            "file_path": "results\\MAS_FinalTest\\DungeonAgent.onnx",
+            "reward": -2.272333516014947,
+            "creation_time": 1782321553.274219,
+            "auxillary_file_paths": [
+                "results\\MAS_FinalTest\\DungeonAgent\\DungeonAgent-1161.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "0.30.0",
+        "torch_version": "2.8.0+cpu"
+    }
+}
