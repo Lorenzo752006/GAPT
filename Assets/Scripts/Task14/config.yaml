@@ -18,7 +18,7 @@ behaviors:
         gamma: 0.99
         strength: 1.0
     behavioral_cloning:
-      demo_path: Assets/Scripts/Task 14/Demonstrations/TargetDemo3.demo
+      demo_path: Assets/Scripts/Task14/Demonstrations/TargetDemo3.demo
       strength: 1.0
       steps: 100000
     max_steps: 100000
