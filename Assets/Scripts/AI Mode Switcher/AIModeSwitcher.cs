@@ -6,13 +6,13 @@ public class AIModeSwitcher : MonoBehaviour
     [Header("Task 4 References")]
     private EnemyFSM task4FSM;
 
-    [Header("Task 13 References")]
-    private MASAgentAI task13MAS;
+    [Header("Task 13 References (All Agents)")]
+    private MASAgentAI[] task13MASAgents;
+    private MASAgentAI.ComplexityMode currentTask13Mode = MASAgentAI.ComplexityMode.Basic;
 
     [Header("Task 16 References")]
     private MCTSManager task16MCTS;
 
-    // Optional: Reference text components to display current status on your UI
     [Header("Optional Status Text UI")]
     [SerializeField] private TMP_Text task4StatusText;
     [SerializeField] private TMP_Text task13StatusText;
@@ -28,8 +28,10 @@ public class AIModeSwitcher : MonoBehaviour
     private void FindSceneReferences()
     {
         if (task4FSM == null) task4FSM = FindFirstObjectByType<EnemyFSM>();
-        if (task13MAS == null) task13MAS = FindFirstObjectByType<MASAgentAI>();
         if (task16MCTS == null) task16MCTS = FindFirstObjectByType<MCTSManager>();
+        
+        // Grab all active agents in the hierarchy
+        task13MASAgents = FindObjectsByType<MASAgentAI>(FindObjectsSortMode.None);
     }
 
     // Button Hook for Task 4 FSM
@@ -38,7 +40,6 @@ public class AIModeSwitcher : MonoBehaviour
         if (task4FSM == null) FindSceneReferences();
         if (task4FSM == null) return;
 
-        // Toggle the enum
         task4FSM.aiMode = (task4FSM.aiMode == ComplexityMode.Complex) 
             ? ComplexityMode.Basic 
             : ComplexityMode.Complex;
@@ -47,20 +48,38 @@ public class AIModeSwitcher : MonoBehaviour
         UpdateVisuals();
     }
 
-    // Button Hook for Task 13 Multi-Agent System
+    // Button Hook for Task 13 Multi-Agent System (Bulletproof Version)
     public void ToggleTask13MAS()
     {
-        if (task13MAS == null) FindSceneReferences();
-        if (task13MAS == null) return;
+        FindSceneReferences();
 
-        // Toggle using your MAS script's complexity enum name configuration
-        // (Assuming your MAS uses the same ComplexityMode structure)
-        task13MAS.agentMode = (task13MAS.agentMode == MASAgentAI.ComplexityMode.Complex) 
+        // 1. Flip our localized tracking state variable first
+        currentTask13Mode = (currentTask13Mode == MASAgentAI.ComplexityMode.Complex) 
             ? MASAgentAI.ComplexityMode.Basic 
             : MASAgentAI.ComplexityMode.Complex;
 
-        Debug.Log($"UI Action: Task 13 MAS flipped to {task13MAS.agentMode}");
-        UpdateVisuals();
+        // 2. Force update the UI text immediately so it never locks up
+        if (task13StatusText != null) 
+        {
+            task13StatusText.text = $"MAS: {currentTask13Mode}";
+        }
+
+        // 3. Safely broadcast the state change down to every individual agent found
+        if (task13MASAgents != null && task13MASAgents.Length > 0)
+        {
+            foreach (MASAgentAI agent in task13MASAgents)
+            {
+                if (agent != null)
+                {
+                    agent.agentMode = currentTask13Mode;
+                }
+            }
+            Debug.Log($"UI Action: Flipped {task13MASAgents.Length} Task 13 Agents to {currentTask13Mode}");
+        }
+        else
+        {
+            Debug.LogWarning("UI Updated, but no active Task 13 Agents were found in the scene to switch.");
+        }
     }
 
     // Button Hook for Task 16 MCTS
@@ -69,7 +88,6 @@ public class AIModeSwitcher : MonoBehaviour
         if (task16MCTS == null) FindSceneReferences();
         if (task16MCTS == null) return;
 
-        // Toggle the target mode enum
         task16MCTS.aiMode = (task16MCTS.aiMode == MCTSManager.ComplexityMode.Complex) 
             ? MCTSManager.ComplexityMode.Basic 
             : MCTSManager.ComplexityMode.Complex;
@@ -80,12 +98,12 @@ public class AIModeSwitcher : MonoBehaviour
 
     private void UpdateVisuals()
     {
-        // Update UI Text markers if assigned to show active states inside the build
         if (task4StatusText != null && task4FSM != null) 
             task4StatusText.text = $"FSM: {task4FSM.aiMode}";
         
-        if (task13StatusText != null && task13MAS != null) 
-            task13StatusText.text = $"MAS: {task13MAS.agentMode}";
+        // Read directly from our local state tracker variable instead of inspecting an index
+        if (task13StatusText != null) 
+            task13StatusText.text = $"MAS: {currentTask13Mode}";
             
         if (task16StatusText != null && task16MCTS != null) 
             task16StatusText.text = $"MCTS: {task16MCTS.aiMode}";
