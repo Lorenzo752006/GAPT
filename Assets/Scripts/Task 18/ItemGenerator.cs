@@ -1,177 +1,66 @@
-using System;
-using System.Collections;
 using UnityEngine;
-using UnityEngine.Networking;
 using TMPro;
 using UnityEngine.UI;
 
-// Task 18 - Generative AI content pipeline.
-//
-//   BASIC   (GenerateBasicItem): hardcoded name/stats/lore + a pre-made sprite.
-//           The placeholder baseline.
-//
-//   COMPLEX (GenerateComplexItem): generates the item live via web APIs -
-//           an AI image from Pollinations (image.pollinations.ai) applied to the
-//           UI, and AI stats + lore from Pollinations text (text.pollinations.ai).
-//           Pollinations is free and needs no API key. Endpoints are configurable.
-//
-// Wire the two methods to two UI buttons (Basic / Complex).
 public class ItemGenerator : MonoBehaviour
 {
-    [Header("UI References")]
     public TMP_Text itemNameText;
     public TMP_Text itemStatsText;
     public TMP_Text itemLoreText;
     public Image itemImage;
 
-    [Header("Basic (placeholder) art")]
     public Sprite basicSwordSprite;
-    public Sprite aiSwordSprite; // kept for fallback if a request fails
+    public Sprite aiSwordSprite;
 
-    [Header("Complex - generation prompts")]
-    [TextArea] public string imagePrompt =
-        "a single fantasy sword item icon, dark dungeon loot, centered on black background, pixel art";
-    [TextArea] public string textPrompt =
-        "Invent one fantasy dungeon weapon. Reply ONLY with compact JSON, no markdown, " +
-        "exactly: {\"name\":\"...\",\"stats\":\"...\",\"lore\":\"...\"}. " +
-        "stats is a short multi-line string, lore is one or two sentences.";
+    private string[] prefixes = { "Shadow", "Void", "Frost", "Storm", "Inferno", "Crystal", "Ancient" };
+    private string[] weaponTypes = { "Blade", "Axe", "Dagger", "Spear", "Staff", "Sword" };
+    private string[] rarities = { "Rare", "Epic", "Legendary" };
 
-    [Header("Complex - endpoints (Pollinations.ai)")]
-    public string imageEndpoint = "https://image.pollinations.ai/prompt/";
-    public string textEndpoint = "https://text.pollinations.ai/";
-    public int imageSize = 384;
-
-    private bool isBusy;
-
-    [Serializable]
-    private class GeneratedItem
+    private string[] loreParts =
     {
-        public string name;
-        public string stats;
-        public string lore;
+        "Forged in a forgotten dungeon, this weapon carries unstable magical energy.",
+        "Generated from ancient dungeon data, this item adapts to its wielder.",
+        "Created by corrupted AI magic, this weapon changes its strength over time.",
+        "Discovered inside a cursed chest, this item was never crafted by human hands.",
+        "Formed from digital runes, this weapon feeds on the fear of nearby enemies."
+    };
+
+    void Start()
+    {
+        GenerateBasicItem();
     }
 
-    private void Start()
-    {
-        itemNameText.text = "Item Name";
-        itemStatsText.text = "Stats";
-        itemLoreText.text = "Lore";
-        if (itemImage != null)
-        {
-            itemImage.sprite = null;
-            itemImage.color = new Color(1, 1, 1, 0); // hidden until something is shown
-        }
-    }
-
-    // ----------------------------------------------------------------- BASIC
     public void GenerateBasicItem()
     {
         itemNameText.text = "Iron Sword";
         itemStatsText.text = "Damage: +5\nDurability: 80";
         itemLoreText.text = "A simple sword used by dungeon guards.";
 
-        if (itemImage != null)
-        {
-            itemImage.sprite = basicSwordSprite;
-            itemImage.color = Color.white;
-        }
+        itemImage.sprite = basicSwordSprite;
+        itemImage.color = Color.white;
     }
 
-    // --------------------------------------------------------------- COMPLEX
     public void GenerateComplexItem()
     {
-        if (isBusy) return;
-        StartCoroutine(GenerateRoutine());
-    }
+        string itemName = prefixes[Random.Range(0, prefixes.Length)] + weaponTypes[Random.Range(0, weaponTypes.Length)];
 
-    private IEnumerator GenerateRoutine()
-    {
-        isBusy = true;
-        itemNameText.text = "Generating...";
-        itemStatsText.text = "";
-        itemLoreText.text = "Contacting generative APIs...";
+        int damage = Random.Range(10, 26);
+        int crit = Random.Range(5, 31);
+        int durability = Random.Range(60, 101);
+        string rarity = rarities[Random.Range(0, rarities.Length)];
+        string lore = loreParts[Random.Range(0, loreParts.Length)];
 
-        // Fire both requests; run them one after another to keep it simple/robust.
-        yield return StartCoroutine(RequestText());
-        yield return StartCoroutine(RequestImage());
+        itemNameText.text = itemName;
 
-        isBusy = false;
-    }
+        itemStatsText.text =
+            "Damage: +" + damage +
+            "\nCrit: +" + crit + "%" +
+            "\nDurability: " + durability +
+            "\nRarity: " + rarity;
 
-    private IEnumerator RequestText()
-    {
-        string url = textEndpoint + UnityWebRequest.EscapeURL(textPrompt);
-        using (UnityWebRequest req = UnityWebRequest.Get(url))
-        {
-            yield return req.SendWebRequest();
+        itemLoreText.text = lore;
 
-            if (req.result != UnityWebRequest.Result.Success)
-            {
-                itemNameText.text = "Mystery Item";
-                itemStatsText.text = "(stats unavailable)";
-                itemLoreText.text = "Text generation failed: " + req.error;
-                yield break;
-            }
-
-            ApplyGeneratedText(req.downloadHandler.text);
-        }
-    }
-
-    private void ApplyGeneratedText(string raw)
-    {
-        // Models sometimes wrap JSON in prose or ``` fences - extract the {...} span.
-        GeneratedItem item = null;
-        int open = raw.IndexOf('{');
-        int close = raw.LastIndexOf('}');
-        if (open >= 0 && close > open)
-        {
-            string json = raw.Substring(open, close - open + 1);
-            try { item = JsonUtility.FromJson<GeneratedItem>(json); }
-            catch { item = null; }
-        }
-
-        if (item != null && !string.IsNullOrWhiteSpace(item.name))
-        {
-            itemNameText.text = item.name;
-            itemStatsText.text = string.IsNullOrWhiteSpace(item.stats) ? "(no stats)" : item.stats;
-            itemLoreText.text = string.IsNullOrWhiteSpace(item.lore) ? "(no lore)" : item.lore;
-        }
-        else
-        {
-            // Fallback: not valid JSON, just show the raw generated text as lore.
-            itemNameText.text = "AI-Generated Item";
-            itemStatsText.text = "Damage: +?? \nRarity: Unknown";
-            itemLoreText.text = raw.Trim();
-        }
-    }
-
-    private IEnumerator RequestImage()
-    {
-        if (itemImage == null) yield break;
-
-        string url = imageEndpoint + UnityWebRequest.EscapeURL(imagePrompt)
-                     + $"?width={imageSize}&height={imageSize}&nologo=true&seed={UnityEngine.Random.Range(1, 999999)}";
-
-        using (UnityWebRequest req = UnityWebRequestTexture.GetTexture(url))
-        {
-            yield return req.SendWebRequest();
-
-            if (req.result != UnityWebRequest.Result.Success)
-            {
-                // Fall back to the pre-made AI sprite so the panel still shows something.
-                itemImage.sprite = aiSwordSprite;
-                itemImage.color = Color.white;
-                yield break;
-            }
-
-            Texture2D tex = DownloadHandlerTexture.GetContent(req);
-            Sprite sprite = Sprite.Create(
-                tex,
-                new Rect(0, 0, tex.width, tex.height),
-                new Vector2(0.5f, 0.5f));
-
-            itemImage.sprite = sprite;
-            itemImage.color = Color.white;
-        }
+        itemImage.sprite = aiSwordSprite;
+        itemImage.color = Color.white;
     }
 }

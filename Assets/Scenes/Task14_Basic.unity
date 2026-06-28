@@ -354,6 +354,7 @@ GameObject:
   - component: {fileID: 1043754959}
   - component: {fileID: 1043754958}
   - component: {fileID: 1043754961}
+  - component: {fileID: 1043754962}
   m_Layer: 0
   m_Name: Agent
   m_TagString: Untagged
@@ -442,7 +443,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1043754955}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
@@ -457,7 +458,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1043754955}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e52b86d4c2c574d0e8d1852e6e7d37a6, type: 3}
   m_Name: 
@@ -476,7 +477,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1043754955}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5d1c4e0b1822b495aa52bc52839ecb30, type: 3}
   m_Name: 
@@ -493,7 +494,7 @@ MonoBehaviour:
     hasUpgradedBrainParametersWithActionSpec: 1
   m_Model: {fileID: 0}
   m_InferenceDevice: 0
-  m_BehaviorType: 0
+  m_BehaviorType: 1
   m_BehaviorName: ImitationAgent
   TeamId: 0
   m_UseChildSensors: 1
@@ -512,10 +513,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f2902496c0120472b90269f94a0aec7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Demonstrations.DemonstrationRecorder
-  Record: 0
+  Record: 1
   NumStepsToRecord: 0
   DemonstrationName: TargetDemo_3
   DemonstrationDirectory: 
+--- !u!114 &1043754962
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1043754955}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b79b3ea0f28845f6a8aa40a2b83b1d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BasicImitationAgent
+  target: {fileID: 1671484318}
+  moveSpeed: 3
+  targetDistance: 0.3
 --- !u!1 &1671484316
 GameObject:
   m_ObjectHideFlags: 0
