@@ -42,7 +42,7 @@ public class SearchArea : BTNode
     }
 
     /// <summary>
-    /// The PathFollower used by this node, exposed for gizmo drawing.
+    /// The PathFollower used by this node, exposed for runtime visualization.
     /// Returns null when pathfinding is disabled.
     /// </summary>
     public PathFollower PathFollower => usePathfinding ? pathFollower : null;
@@ -84,7 +84,7 @@ public class SearchArea : BTNode
         locomotion.SetTarget(waypointTarget);
         locomotion.SetFlee(false);
 
-        // ?? PHASE 1: Head directly to last known position ??
+        // Move to the last known player position first.
         if (headingToCentre)
         {
             if (needsNewWaypoint)
@@ -110,7 +110,7 @@ public class SearchArea : BTNode
 
             if (arrived || waypointTimer >= waypointTimeout)
             {
-                // Arrived at last known position — start searching
+                // Start searching once the centre is reached.
                 headingToCentre = false;
                 searchTimer = 0f;
                 waypointTimer = 0f;
@@ -120,7 +120,7 @@ public class SearchArea : BTNode
             return BTNodeStatus.Running;
         }
 
-        // ?? PHASE 2: Search around the area ??
+        // Search nearby points until the timer expires.
         searchTimer += Time.deltaTime;
         if (searchTimer >= searchDuration)
         {

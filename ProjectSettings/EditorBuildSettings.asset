@@ -21,8 +21,11 @@ EditorBuildSettings:
     path: Assets/Scenes/Task4.unity
     guid: 473bc8b35f4269c4d8c4d449da5cfba3
   - enabled: 1
-    path: Assets/Scenes/Task 5.unity
+    path: Assets/Scenes/Task5MultiScene/Task5Complex.unity
     guid: 7c4fc0b2472246844b3dad8adcfcf1bb
+  - enabled: 1
+    path: Assets/Scenes/Task5MultiScene/Task5Basic.unity
+    guid: 46394a17b01c7084688174226e9d7c39
   - enabled: 1
     path: Assets/Scenes/Task6.unity
     guid: 8793c187abd52f14aaae1f786ad30ad3
@@ -51,8 +54,11 @@ EditorBuildSettings:
     path: Assets/Scenes/Task10.unity
     guid: 9ae692cb951ce78459f7f9151e939364
   - enabled: 1
-    path: Assets/Scenes/Task 11.unity
-    guid: ae91b4fc29ba6e644819ae8c36626202
+    path: Assets/Scenes/Task11MultiScene/Task11Complex.unity
+    guid: 891d0da2f46c36d49ae2111fff691019
+  - enabled: 1
+    path: Assets/Scenes/Task11MultiScene/Task11Basic.unity
+    guid: 268948e75342b1a48aa4e6af8952a408
   - enabled: 1
     path: Assets/Scenes/Task17MultiScenes/ComplexTestingTask17.unity
     guid: 6420da66a36512b4788e2c0b7d0b98de

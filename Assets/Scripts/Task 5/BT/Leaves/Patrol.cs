@@ -31,7 +31,7 @@ public class Patrol : BTNode
     }
 
     /// <summary>
-    /// The PathFollower used by this node, exposed for gizmo drawing.
+    /// The PathFollower used by this node, exposed for runtime visualization.
     /// Returns null when pathfinding is disabled.
     /// </summary>
     public PathFollower PathFollower => usePathfinding ? pathFollower : null;

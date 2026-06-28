@@ -1,13 +1,12 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
-using System; // Added for Action
+using UnityEngine;
 
 public class QLearningTrainer : MonoBehaviour
 {
     public static QLearningTrainer Instance { get; private set; }
 
-    // --- NEW EVENT FOR PART 2 ---
-    public Action OnRetrainingComplete; 
+    public Action OnRetrainingComplete;
 
     [Header("Goal Target")]
     [SerializeField] private Transform player;
@@ -18,21 +17,21 @@ public class QLearningTrainer : MonoBehaviour
     [Header("Training Parameters")]
     [SerializeField] private int totalEpisodes = 50000;
     [SerializeField] private int maxStepsPerEpisode = 1000;
-    
+
     [Tooltip("How fast the agent learns. Range 0-1.")]
-    [SerializeField] private float learningRate = 0.2f; 
+    [SerializeField] private float learningRate = 0.2f;
 
     [Tooltip("How much future rewards are valued. Range 0-1.")]
-    [SerializeField] private float discountFactor = 0.95f; 
+    [SerializeField] private float discountFactor = 0.95f;
 
     [SerializeField] private float startExplorationRate = 1.0f;
     [SerializeField] private float minExplorationRate = 0.01f;
-    [SerializeField] private float explorationDecay = 0.9999f; 
+    [SerializeField] private float explorationDecay = 0.9999f;
 
     [Header("Rewards")]
-    [SerializeField] private float rewardGoal = 1000f; 
-    [SerializeField] private float penaltyWall = -15f; 
-    [SerializeField] private float penaltyStep = -1f;  
+    [SerializeField] private float rewardGoal = 1000f;
+    [SerializeField] private float penaltyWall = -15f;
+    [SerializeField] private float penaltyStep = -1f;
 
     [Header("Retraining")]
     [SerializeField] private bool retrainOnGoalChange = true;
@@ -44,7 +43,7 @@ public class QLearningTrainer : MonoBehaviour
     [SerializeField] private bool showQValueGizmos = true;
 
     [Header("Testing")]
-    public bool TestRandomGoalSpawn = false; 
+    public bool TestRandomGoalSpawn = false;
 
     [Header("Runtime Info (Read Only)")]
     [SerializeField] private string trainingStatus = "Not Started";
@@ -60,54 +59,43 @@ public class QLearningTrainer : MonoBehaviour
 
     public QLearningAgent Agent => agent;
     public bool IsReady => isTrainingComplete;
+    public Vector2Int CurrentGoalPosition => agent != null ? agent.GoalPosition : GetGoalGridPosition();
 
-    public void SpawnRandomGoal()
+    public void UsePlayerAsGoal()
     {
-        GridManager gm = GridManager.Instance;
-        if (gm == null || agent == null) return;
+        SetUsePlayerAsGoal(true);
+    }
 
-        List<Vector2Int> walkableCells = new List<Vector2Int>();
-        for (int x = 0; x < gm.Width; x++)
-        {
-            for (int y = 0; y < gm.Height; y++)
-            {
-                if (gm.IsWalkable(x, y) && (x != agent.CurrentPosition.x || y != agent.CurrentPosition.y))
-                {
-                    walkableCells.Add(new Vector2Int(x, y));
-                }
-            }
-        }
+    public void SetUsePlayerAsGoal(bool value)
+    {
+        usePlayerPositionAsGoal = value;
+        ApplyGoalChange();
+    }
 
-        if (walkableCells.Count > 0)
-        {
-            Vector2Int randomGoal = walkableCells[UnityEngine.Random.Range(0, walkableCells.Count)];
-            goalX = randomGoal.x;
-            goalY = randomGoal.y;
-            usePlayerPositionAsGoal = false; 
-
-            agent.SetGoal(randomGoal);
-            lastGoalPosition = randomGoal;
-            agent.Table.Reset(); 
-            agent.ExplorationRate = startExplorationRate; 
-
-            Train(retrainEpisodes); 
-
-            if (showTrainingLog)
-                Debug.Log($"[QLearningTrainer] New goal at {randomGoal}. Retraining complete.");
-        }
+    public void ToggleUsePlayerAsGoal()
+    {
+        SetUsePlayerAsGoal(!usePlayerPositionAsGoal);
     }
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
     }
 
     private void Start()
     {
-        GridManager gm = GridManager.Instance;
-        if (gm == null) return;
-        agent = new QLearningAgent(gm.grid, gm.Width, gm.Height, learningRate, discountFactor, startExplorationRate, rewardGoal, penaltyWall, penaltyStep);
+        GridManager grid = GridManager.Instance;
+        if (grid == null)
+            return;
+
+        agent = new QLearningAgent(grid.grid, grid.Width, grid.Height, learningRate, discountFactor,
+                                   startExplorationRate, rewardGoal, penaltyWall, penaltyStep);
         needsInitialTraining = true;
     }
 
@@ -120,7 +108,8 @@ public class QLearningTrainer : MonoBehaviour
             Train(totalEpisodes);
         }
 
-        if (!isTrainingComplete || !retrainOnGoalChange) return;
+        if (!isTrainingComplete || !retrainOnGoalChange)
+            return;
 
         retrainTimer -= Time.deltaTime;
         if (retrainTimer <= 0f)
@@ -138,10 +127,57 @@ public class QLearningTrainer : MonoBehaviour
         }
     }
 
+    public void SpawnRandomGoal()
+    {
+        GridManager grid = GridManager.Instance;
+        if (grid == null || agent == null)
+            return;
+
+        List<Vector2Int> walkableCells = new List<Vector2Int>();
+        for (int x = 0; x < grid.Width; x++)
+        {
+            for (int y = 0; y < grid.Height; y++)
+            {
+                if (grid.IsWalkable(x, y) && (x != agent.CurrentPosition.x || y != agent.CurrentPosition.y))
+                    walkableCells.Add(new Vector2Int(x, y));
+            }
+        }
+
+        if (walkableCells.Count == 0)
+            return;
+
+        Vector2Int randomGoal = walkableCells[UnityEngine.Random.Range(0, walkableCells.Count)];
+        goalX = randomGoal.x;
+        goalY = randomGoal.y;
+        usePlayerPositionAsGoal = false;
+
+        agent.SetGoal(randomGoal);
+        lastGoalPosition = randomGoal;
+        agent.Table.Reset();
+        agent.ExplorationRate = startExplorationRate;
+
+        Train(retrainEpisodes);
+
+        if (showTrainingLog)
+            Debug.Log($"[QLearningTrainer] New goal at {randomGoal}. Retraining complete.");
+    }
+
+    private void ApplyGoalChange()
+    {
+        if (agent == null)
+            return;
+
+        UpdateGoalPosition();
+        agent.Table.Reset();
+        agent.ExplorationRate = startExplorationRate;
+        Train(isTrainingComplete ? retrainEpisodes : totalEpisodes);
+    }
+
     private void Train(int episodes)
     {
         trainingStatus = "Training...";
         float epsilon = agent.ExplorationRate;
+
         for (int episode = 0; episode < episodes; episode++)
         {
             int steps = agent.RunEpisode(maxStepsPerEpisode);
@@ -152,79 +188,106 @@ public class QLearningTrainer : MonoBehaviour
             currentExplorationRate = epsilon;
             lastEpisodeSteps = steps;
         }
+
         isTrainingComplete = true;
         trainingStatus = $"Complete ({episodes} episodes)";
-
-        // --- TRIGGER THE EVENT ---
         OnRetrainingComplete?.Invoke();
     }
 
     private void UpdateGoalPosition()
     {
         Vector2Int goal = GetGoalGridPosition();
-        GridManager gm = GridManager.Instance;
-        if (gm != null && !gm.IsWalkable(goal.x, goal.y)) goal = FindNearestWalkable(goal, gm);
+        GridManager grid = GridManager.Instance;
+
+        if (grid != null && !grid.IsWalkable(goal.x, goal.y))
+            goal = FindNearestWalkable(goal, grid);
+
         agent.SetGoal(goal);
         lastGoalPosition = goal;
     }
 
-    private Vector2Int FindNearestWalkable(Vector2Int pos, GridManager gm)
+    private Vector2Int FindNearestWalkable(Vector2Int position, GridManager grid)
     {
-        for (int radius = 1; radius < Mathf.Max(gm.Width, gm.Height); radius++)
+        int maxRadius = Mathf.Max(grid.Width, grid.Height);
+        for (int radius = 1; radius < maxRadius; radius++)
         {
             for (int dx = -radius; dx <= radius; dx++)
             {
                 for (int dy = -radius; dy <= radius; dy++)
                 {
-                    if (Mathf.Abs(dx) != radius && Mathf.Abs(dy) != radius) continue;
-                    int nx = pos.x + dx; int ny = pos.y + dy;
-                    if (gm.IsWalkable(nx, ny)) return new Vector2Int(nx, ny);
+                    if (Mathf.Abs(dx) != radius && Mathf.Abs(dy) != radius)
+                        continue;
+
+                    int x = position.x + dx;
+                    int y = position.y + dy;
+                    if (grid.IsWalkable(x, y))
+                        return new Vector2Int(x, y);
                 }
             }
         }
-        return pos;
+
+        return position;
     }
 
     private Vector2Int GetGoalGridPosition()
     {
-        if (usePlayerPositionAsGoal && player != null) return GridManager.Instance.WorldToGrid(player.position);
+        GridManager grid = GridManager.Instance;
+        if (usePlayerPositionAsGoal && player != null && grid != null)
+            return grid.WorldToGrid(player.position);
+
         return new Vector2Int(goalX, goalY);
     }
 
-    private void OnDrawGizmosSelected() { if (showQValueGizmos && agent != null && isTrainingComplete) DrawQValueGizmos(); }
+    private void OnDrawGizmosSelected()
+    {
+        if (showQValueGizmos && agent != null && isTrainingComplete)
+            DrawQValueGizmos();
+    }
+
     private void DrawQValueGizmos()
     {
-        GridManager gm = GridManager.Instance;
-        if (gm == null) return;
+        GridManager grid = GridManager.Instance;
+        if (grid == null)
+            return;
+
         QTable table = agent.Table;
         float globalMax = 0.001f;
-        for (int x = 0; x < gm.Width; x++)
+
+        for (int x = 0; x < grid.Width; x++)
         {
-            for (int y = 0; y < gm.Height; y++)
+            for (int y = 0; y < grid.Height; y++)
             {
-                if (gm.grid[x, y] != CellType.Floor) continue;
+                if (grid.grid[x, y] != CellType.Floor)
+                    continue;
+
                 float maxQ = table.GetMaxQ(agent.GetCurrentStateInfo(x, y));
-                if (maxQ > globalMax) globalMax = maxQ;
+                if (maxQ > globalMax)
+                    globalMax = maxQ;
             }
         }
-        for (int x = 0; x < gm.Width; x++)
+
+        for (int x = 0; x < grid.Width; x++)
         {
-            for (int y = 0; y < gm.Height; y++)
+            for (int y = 0; y < grid.Height; y++)
             {
-                if (gm.grid[x, y] != CellType.Floor) continue;
-                Vector3 worldPos = gm.GridToWorld(x, y);
+                if (grid.grid[x, y] != CellType.Floor)
+                    continue;
+
+                Vector3 worldPosition = grid.GridToWorld(x, y);
                 int state = agent.GetCurrentStateInfo(x, y);
                 float maxQ = table.GetMaxQ(state);
                 int bestAction = table.GetBestAction(state);
                 float intensity = Mathf.Clamp01(maxQ / globalMax);
+
                 Gizmos.color = new Color(0f, intensity, 1f - intensity, 0.4f);
-                Gizmos.DrawCube(worldPos, Vector3.one * gm.CellSize * 0.8f);
-                if (maxQ > 0)
+                Gizmos.DrawCube(worldPosition, Vector3.one * grid.CellSize * 0.8f);
+
+                if (maxQ > 0f)
                 {
-                    Vector2Int dir = QTable.ActionToDirection(bestAction);
-                    Vector3 arrowEnd = worldPos + new Vector3(dir.x, dir.y, 0f) * gm.CellSize * 0.35f;
+                    Vector2Int direction = QTable.ActionToDirection(bestAction);
+                    Vector3 arrowEnd = worldPosition + new Vector3(direction.x, direction.y, 0f) * grid.CellSize * 0.35f;
                     Gizmos.color = Color.yellow;
-                    Gizmos.DrawLine(worldPos, arrowEnd);
+                    Gizmos.DrawLine(worldPosition, arrowEnd);
                 }
             }
         }

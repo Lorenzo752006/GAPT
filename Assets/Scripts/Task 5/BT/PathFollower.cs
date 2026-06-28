@@ -30,7 +30,7 @@ public class PathFollower
     public bool IsComplete => path.Count > 0 && currentIndex >= path.Count;
 
     /// <summary>
-    /// The current path for gizmo drawing. Read-only.
+    /// The current path for runtime visualization. Read-only.
     /// </summary>
     public List<Vector2Int> CurrentPath => path;
 
