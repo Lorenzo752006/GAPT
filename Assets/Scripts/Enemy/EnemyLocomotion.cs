@@ -30,6 +30,16 @@ public class EnemyLocomotion : MonoBehaviour
     [SerializeField] private float agentRadius = 0.4f; // Matches actual character size
     [SerializeField] private LayerMask wallLayer;
 
+    [Header("Debug")]
+    [SerializeField] private bool showDebugRays = true;
+    [SerializeField] private Material debugLineMaterial;
+    [SerializeField] private float debugLineWidth = 0.05f;
+    [SerializeField] private int circleSegments = 16;
+
+    private LineRenderer[] debugLines;
+    private LineRenderer[] debugCircles;
+
+
     void Awake()
     {
         // Pre-calculate ray directions for performance
@@ -39,15 +49,24 @@ public class EnemyLocomotion : MonoBehaviour
             float angle = i * (Mathf.PI * 2) / rayCount;
             rayDirections[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
         }
-    }
 
-    void Start()
-    {
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
         // Optimization: Set collision detection to continuous if moving fast
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        SetupDebugLines();
+        SetDebugRaysVisible(false);
     }
+
+    // void Start()
+    // {
+    //     rb = GetComponent<Rigidbody2D>();
+    //     rb.gravityScale = 0f;
+    //     // Optimization: Set collision detection to continuous if moving fast
+    //     rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+    //     SetupDebugLines();
+    //     SetDebugRaysVisible(true);
+    // }
 
     void FixedUpdate()
     {
@@ -79,6 +98,9 @@ public class EnemyLocomotion : MonoBehaviour
             Quaternion moveRotation = Quaternion.Euler(0, 0, angle);
             transform.rotation = Quaternion.Slerp(transform.rotation, moveRotation, rotationSpeed * Time.fixedDeltaTime);
         }
+
+        if (showDebugRays && debugLines != null)
+            DrawDebugRays();
     }
 
 
@@ -171,10 +193,87 @@ public class EnemyLocomotion : MonoBehaviour
         flee = !flee;
     }
 
-    private void OnDrawGizmos()
-    {
-        if (rb == null || rayDirections == null) return;
+    // private void OnDrawGizmos()
+    // {
+    //     if (rb == null || rayDirections == null) return;
 
+    //     float lookAheadOffset = rb.linearVelocity.magnitude * Time.fixedDeltaTime;
+    //     Vector2 castOrigin = (Vector2)transform.position + (rb.linearVelocity.normalized * lookAheadOffset);
+
+    //     for (int i = 0; i < rayCount; i++)
+    //     {
+    //         Vector2 dir = rayDirections[i];
+    //         Vector2 rayStart = castOrigin + (dir * 0.1f);
+    //         RaycastHit2D hit = Physics2D.CircleCast(rayStart, agentRadius, dir, detectionRange, wallLayer);
+
+    //         if (hit.collider != null)
+    //         {
+    //             Gizmos.color = Color.red;
+    //             Gizmos.DrawWireSphere(rayStart + dir * hit.distance, agentRadius);
+    //         }
+    //         else
+    //         {
+    //             Gizmos.color = Color.green;
+    //             Gizmos.DrawRay(rayStart, dir * detectionRange);
+    //         }
+    //     }
+    // }
+
+    public void SetDebugRaysVisible(bool value)
+    {
+        showDebugRays = value;
+
+        if (showDebugRays && debugLines == null)
+            SetupDebugLines();
+
+        if (debugLines != null)
+        {
+            foreach (LineRenderer lr in debugLines)
+                lr.enabled = showDebugRays;
+
+
+            foreach (LineRenderer circleLr in debugCircles)
+                circleLr.enabled = false;
+        }
+    }
+
+    private void SetupDebugLines()
+    {
+        debugLines = new LineRenderer[rayCount];
+        debugCircles = new LineRenderer[rayCount];
+
+        for (int i = 0; i < rayCount; i++)
+        {
+            // Ray line
+            GameObject lineObj = new GameObject($"DebugRay_{i}");
+            lineObj.transform.SetParent(transform, false);
+            LineRenderer lr = lineObj.AddComponent<LineRenderer>();
+            lr.material = debugLineMaterial;
+            lr.startWidth = debugLineWidth;
+            lr.endWidth = debugLineWidth;
+            lr.positionCount = 2;
+            lr.useWorldSpace = true;
+            lr.loop = false;
+            lr.sortingOrder = 10;
+            debugLines[i] = lr;
+
+            // Hit-point circle
+            GameObject circleObj = new GameObject($"DebugCircle_{i}");
+            circleObj.transform.SetParent(transform, false);
+            LineRenderer circleLr = circleObj.AddComponent<LineRenderer>();
+            circleLr.material = debugLineMaterial;
+            circleLr.startWidth = debugLineWidth;
+            circleLr.endWidth = debugLineWidth;
+            circleLr.useWorldSpace = true;
+            circleLr.loop = true; // closes the loop automatically, no extra point needed
+            circleLr.sortingOrder = 10;
+            circleLr.enabled = false;
+            debugCircles[i] = circleLr;
+        }
+    }
+
+    private void DrawDebugRays()
+    {
         float lookAheadOffset = rb.linearVelocity.magnitude * Time.fixedDeltaTime;
         Vector2 castOrigin = (Vector2)transform.position + (rb.linearVelocity.normalized * lookAheadOffset);
 
@@ -184,18 +283,46 @@ public class EnemyLocomotion : MonoBehaviour
             Vector2 rayStart = castOrigin + (dir * 0.1f);
             RaycastHit2D hit = Physics2D.CircleCast(rayStart, agentRadius, dir, detectionRange, wallLayer);
 
+            LineRenderer lr = debugLines[i];
+            LineRenderer circleLr = debugCircles[i];
+
             if (hit.collider != null)
             {
-                Gizmos.color = Color.red;
-                Gizmos.DrawWireSphere(rayStart + dir * hit.distance, agentRadius);
+                Vector2 hitCenter = rayStart + dir * hit.distance;
+
+                lr.SetPosition(0, rayStart);
+                lr.SetPosition(1, hitCenter);
+                lr.startColor = Color.red;
+                lr.endColor = Color.red;
+
+                circleLr.enabled = true;
+                DrawCircle(circleLr, hitCenter, agentRadius, Color.red);
             }
             else
             {
-                Gizmos.color = Color.green;
-                Gizmos.DrawRay(rayStart, dir * detectionRange);
+                lr.SetPosition(0, rayStart);
+                lr.SetPosition(1, rayStart + dir * detectionRange);
+                lr.startColor = Color.green;
+                lr.endColor = Color.green;
+
+                circleLr.enabled = false;
             }
         }
     }
 
-    
+    private void DrawCircle(LineRenderer line, Vector3 center, float radius, Color color)
+    {
+        int segments = Mathf.Max(12, circleSegments);
+        line.positionCount = segments;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = (i / (float)segments) * Mathf.PI * 2f;
+            Vector3 point = center + new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
+            line.SetPosition(i, point);
+        }
+
+        line.startColor = color;
+        line.endColor = color;
+    }
 }
