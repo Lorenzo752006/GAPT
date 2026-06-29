@@ -14,9 +14,10 @@ public class GlobalReturnToMenu : MonoBehaviour
     [Header("Return Button Settings")]
     [SerializeField] private bool showReturnButton = true;
     [SerializeField] private bool allowEscapeKeyReturn = true;
+    [SerializeField] public TMP_FontAsset customFont;
 
     private static GlobalReturnToMenu instance;
-
+    
     private Canvas returnCanvas;
     private Button returnButton;
 
@@ -100,7 +101,7 @@ public class GlobalReturnToMenu : MonoBehaviour
         buttonRect.sizeDelta = new Vector2(170, 50);
 
         Image buttonImage = buttonObject.AddComponent<Image>();
-        buttonImage.color = new Color(1f, 1f, 1f, 0.9f);
+        buttonImage.color = new Color32(0, 0, 0, 90);
 
         returnButton = buttonObject.AddComponent<Button>();
         returnButton.onClick.AddListener(LoadMenuScene);
@@ -118,7 +119,13 @@ public class GlobalReturnToMenu : MonoBehaviour
         buttonText.text = "Task Select";
         buttonText.fontSize = 28;
         buttonText.alignment = TextAlignmentOptions.Center;
-        buttonText.color = Color.black;
+        ColorUtility.TryParseHtmlString("#958CD6", out Color customColor);
+        buttonText.color = customColor;
+        
+        if (customFont != null)
+        {
+            buttonText.font = customFont;
+        }
 
         CreateEventSystemIfMissing();
     }

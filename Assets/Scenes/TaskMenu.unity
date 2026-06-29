@@ -345,8 +345,10 @@ MonoBehaviour:
     sceneName: Task5Complex
   - displayName: Task 6
     sceneName: Task6
-  - displayName: Task 7
-    sceneName: Task7_GOAP
+  - displayName: Task 7 Complex
+    sceneName: Task7_GOAP_Complex
+  - displayName: Task 7 Basic
+    sceneName: Task7_Basic
   - displayName: Task 8
     sceneName: ComplexTask8
   - displayName: Task 9
@@ -359,8 +361,10 @@ MonoBehaviour:
     sceneName: Task12Complex
   - displayName: Task 13
     sceneName: Task13
-  - displayName: Task 14
+  - displayName: Task 14 Complex
     sceneName: Task14_GAIL
+  - displayName: Task 14 Basic
+    sceneName: Task14_Basic
   - displayName: Task 15
     sceneName: Task15
   - displayName: Task 16
@@ -368,7 +372,7 @@ MonoBehaviour:
   - displayName: Task 17
     sceneName: ComplexTask17
   - displayName: Task 18
-    sceneName: Task18_GenerativeItems
+    sceneName: Task18
 --- !u!4 &335240686
 Transform:
   m_ObjectHideFlags: 0
@@ -417,7 +421,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000009536743}
+  m_AnchoredPosition: {x: 0, y: 0.000005722046}
   m_SizeDelta: {x: 0, y: 28}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!1 &494436711
@@ -1643,6 +1647,7 @@ MonoBehaviour:
   menuSceneName: TaskMenu
   showReturnButton: 1
   allowEscapeKeyReturn: 1
+  customFont: {fileID: 11400000, guid: 56e82ff837c719532a3fef36b8ba34dc, type: 2}
 --- !u!4 &1201540392
 Transform:
   m_ObjectHideFlags: 0

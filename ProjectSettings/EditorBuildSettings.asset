@@ -30,9 +30,6 @@ EditorBuildSettings:
     path: Assets/Scenes/Task6.unity
     guid: 8793c187abd52f14aaae1f786ad30ad3
   - enabled: 1
-    path: Assets/Scenes/Task7_GOAP.unity
-    guid: 24c12284105984e4387905300e629075
-  - enabled: 1
     path: Assets/Scenes/Task2MultiScene/SimpleTask2.unity
     guid: b3f77933d00b52f07b4493e05de634dc
   - enabled: 1
@@ -45,11 +42,26 @@ EditorBuildSettings:
     path: Assets/Scenes/Task9Basic.unity
     guid: 6d6580319a2d3a24e8545ae5b0fa07db
   - enabled: 1
+    path: Assets/Scenes/Task7_Basic.unity
+    guid: b2fe02ac6f3074c9b990471aebede76f
+  - enabled: 1
+    path: Assets/Scenes/Task7_GOAP_Complex.unity
+    guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Task18.unity
+    guid: 191a08e24f2814a7ca5aecaa77fde48f
+  - enabled: 1
     path: Assets/Scenes/Task12Basic.unity
     guid: e679fb0b2669c8d478e1b5c5a1cd4bbd
   - enabled: 1
     path: Assets/Scenes/Task9Complex.unity
     guid: f788cada95356cd4095906941ba551dd
+  - enabled: 1
+    path: Assets/Scenes/Task14_Basic.unity
+    guid: 8ba7ebbedd1794b0e87b348eb7051d88
+  - enabled: 1
+    path: Assets/Scenes/Task14_GAIL.unity
+    guid: c505568a513644f01b2fc969f6df1215
   - enabled: 1
     path: Assets/Scenes/Task10.unity
     guid: 9ae692cb951ce78459f7f9151e939364
@@ -75,20 +87,14 @@ EditorBuildSettings:
     path: Assets/Scenes/Task13.unity
     guid: 069c6f7e759fb7f47ae8f29975f6461f
   - enabled: 1
-    path: Assets/Scenes/Task14_GAIL.unity
-    guid: 43de1b66fd010734bbeab2dc339c9478
-  - enabled: 1
     path: Assets/Scenes/Task15.unity
-    guid: d1b1b6cc966db7a4e9f068c9b646b8c1
+    guid: 96ef506d7d365224daecf8bf85d5b897
   - enabled: 1
     path: Assets/Scenes/Task16.unity
     guid: 013f7a62847887a4fbd8e5613a02fd51
   - enabled: 1
     path: Assets/Scenes/Task17MultiScenes/ComplexTask17.unity
     guid: 03b373c3c7e19c84e87da65eb5ecb44d
-  - enabled: 1
-    path: Assets/Scenes/Task18_GenerativeItems.unity
-    guid: c1b8047b56db38f60335f5ff0b2fdb21
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
   m_UseUCBPForAssetBundles: 0
